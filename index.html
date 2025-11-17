@@ -51,15 +51,6 @@
             padding: 0; 
             display: flex;
             justify-content: center;
-            /* 防止移动端滚动时出现白屏 */
-            -webkit-overflow-scrolling: touch;
-            overflow-scrolling: touch;
-            /* 防止重绘问题 */
-            -webkit-backface-visibility: hidden;
-            backface-visibility: hidden;
-            /* 优化渲染 */
-            -webkit-font-smoothing: antialiased;
-            text-rendering: optimizeSpeed;
         }
 
         .container {
@@ -67,12 +58,6 @@
             max-width: 800px; 
             margin: 0 auto;
             padding: 0;
-            /* 防止移动端滚动时出现白屏 */
-            transform: translateZ(0);
-            -webkit-transform: translateZ(0);
-            /* 优化渲染 */
-            will-change: transform;
-            overflow-x: hidden;
         }
 
         /* 顶部 Header 和 Stats 区域 */
@@ -84,12 +69,6 @@
             box-shadow: var(--za-shadow);
             color: white;
             margin-bottom: var(--spacing);
-            /* 防止移动端渲染问题 */
-            position: relative;
-            z-index: 10;
-            /* 优化渲染 */
-            transform: translateZ(0);
-            -webkit-transform: translateZ(0);
         }
 
         .app-title {
@@ -152,12 +131,6 @@
             padding: 0.5rem;
             margin-bottom: var(--spacing);
             overflow: hidden; 
-            /* 防止移动端渲染问题 */
-            position: relative;
-            z-index: 10;
-            /* 优化渲染 */
-            transform: translateZ(0);
-            -webkit-transform: translateZ(0);
         }
 
         .tab-button {
@@ -197,11 +170,6 @@
         /* 主内容区域 */
         .main-content {
             padding: 0 var(--spacing) var(--spacing) var(--spacing); 
-            /* 防止移动端滚动时出现白屏 */
-            transform: translateZ(0);
-            -webkit-transform: translateZ(0);
-            /* 优化渲染 */
-            will-change: transform;
         }
 
         .tab-content {
@@ -211,12 +179,6 @@
             border-radius: var(--za-radius-lg);
             box-shadow: var(--za-shadow);
             overflow: hidden; 
-            /* 防止移动端渲染问题 */
-            position: relative;
-            z-index: 1;
-            /* 优化渲染 */
-            transform: translateZ(0);
-            -webkit-transform: translateZ(0);
         }
 
         .tab-content.active {
@@ -360,9 +322,6 @@
             flex-grow: 1;
             min-width: 120px;
             box-shadow: var(--za-shadow-sm);
-            /* 防止移动端点击闪烁 */
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
         }
 
         .za-btn:active {
@@ -392,11 +351,6 @@
             box-shadow: var(--za-shadow-sm);
             transition: var(--transition);
             overflow: hidden; 
-            /* 防止移动端渲染问题 */
-            transform: translateZ(0);
-            -webkit-transform: translateZ(0);
-            /* 优化渲染 */
-            will-change: transform;
         }
 
         .product-card:hover {
@@ -535,13 +489,6 @@
             flex-direction: column;
             /* 添加固定高度，防止布局抖动 */
             min-height: 180px;
-            /* 防止移动端渲染问题 */
-            transform: translateZ(0);
-            -webkit-transform: translateZ(0);
-            /* 防止移动端滚动时出现白屏 */
-            will-change: transform;
-            /* 优化渲染性能 */
-            contain: layout style paint;
         }
 
         .manage-product-card:hover {
@@ -675,11 +622,6 @@
             border-radius: var(--za-radius-sm);
             border: 1px solid #eee;
             cursor: pointer;
-            /* 防止图片加载导致的布局抖动 */
-            background-color: #f0f0f0;
-            /* 优化图片渲染 */
-            image-rendering: -webkit-optimize-contrast;
-            image-rendering: crisp-edges;
         }
 
         .manage-product-actions {
@@ -696,9 +638,6 @@
             cursor: pointer;
             transition: var(--transition);
             min-width: 70px;
-            /* 防止移动端点击闪烁 */
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
         }
 
         .btn-edit { 
@@ -774,9 +713,6 @@
             overflow-y: auto;
             border-top: 1px solid #e0e0e0;
             padding-top: 1rem;
-            /* 改善移动端滚动体验 */
-            -webkit-overflow-scrolling: touch;
-            overflow-scrolling: touch;
         }
 
         .file-item {
@@ -910,12 +846,6 @@
             .r2-config-grid {
                 grid-template-columns: 1fr;
             }
-            
-            /* 改善移动端滚动性能 */
-            .manage-product-list {
-                -webkit-overflow-scrolling: touch;
-                overflow-scrolling: touch;
-            }
         }
 
         @media (min-width: 601px) {
@@ -966,8 +896,6 @@
             display: none;
             align-items: center;
             justify-content: center;
-            /* 防止移动端滚动穿透 */
-            touch-action: none;
         }
         .image-modal.active {
             display: flex;
@@ -1024,49 +952,6 @@
             background: var(--za-gradient);
             transition: width 0.3s ease;
             width: 0%;
-        }
-        
-        /* 管理产品列表容器 - 修复白屏问题的关键 */
-        .manage-product-list {
-            margin-top: 1rem;
-            max-height: 500px;
-            overflow-y: auto;
-            padding-right: 5px;
-            /* 改善移动端滚动性能 */
-            -webkit-overflow-scrolling: touch;
-            overflow-scrolling: touch;
-            /* 防止移动端滚动时出现白屏 */
-            transform: translateZ(0);
-            -webkit-transform: translateZ(0);
-            /* 防止重绘问题 */
-            backface-visibility: hidden;
-            -webkit-backface-visibility: hidden;
-            /* 优化渲染性能 */
-            will-change: transform;
-            contain: layout style paint;
-        }
-        
-        /* 分页加载按钮 */
-        .load-more-container {
-            text-align: center;
-            margin-top: 1rem;
-            padding: 1rem;
-        }
-        
-        .load-more-btn {
-            background: var(--za-gradient);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: var(--za-radius-md);
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-            box-shadow: var(--za-shadow-sm);
-        }
-        
-        .load-more-btn:active {
-            transform: translateY(1px);
         }
     </style>
 </head>
@@ -1216,10 +1101,7 @@
                         </svg>
                         <input type="text" id="manageSearchInput" class="manage-search" placeholder="搜索产品代码或供应商..." oninput="filterManageProducts()" style="padding-left: 3rem;">
                     </div>
-                    <div class="manage-product-list" id="manageProductList"></div>
-                    <div class="load-more-container" id="loadMoreContainer" style="display: none;">
-                        <button class="load-more-btn" onclick="loadMoreProducts()">加载更多</button>
-                    </div>
+                    <div class="manage-product-list" id="manageProductList" style="margin-top: 1rem; max-height: 500px; overflow-y: auto; padding-right: 5px;"></div>
                 </div>
             </div>
 
@@ -1337,12 +1219,6 @@
         // Cloudflare R2配置
         var r2Config = JSON.parse(localStorage.getItem('r2-config') || '{}');
         var s3Client = null;
-        
-        // 产品管理分页变量
-        var manageCurrentPage = 1;
-        var managePageSize = 20;
-        var filteredManageProducts = [];
-        var hasMoreProducts = false;
 
         // ============== IndexedDB 逻辑 ==============
         function initDB() {
@@ -2183,102 +2059,80 @@
 
         function filterManageProducts() {
             manageSearchTerm = document.getElementById('manageSearchInput').value.toUpperCase();
-            manageCurrentPage = 1;
             renderManageProducts();
         }
 
         // ========== 优化后的产品管理卡片渲染函数 ==========
         function renderManageProducts() {
-            // 过滤产品
-            filteredManageProducts = Object.keys(catalogData)
-                .filter(code => {
-                    if (!manageSearchTerm) return true;
-                    const product = catalogData[code];
-                    return code.toUpperCase().includes(manageSearchTerm) || 
-                          (product.supplier && product.supplier.toUpperCase().includes(manageSearchTerm));
-                })
-                .sort();
-            
-            // 计算分页
-            const startIndex = (manageCurrentPage - 1) * managePageSize;
-            const endIndex = startIndex + managePageSize;
-            const productsToShow = filteredManageProducts.slice(0, endIndex);
-            hasMoreProducts = endIndex < filteredManageProducts.length;
-            
             var list = document.getElementById('manageProductList');
             var html = '';
+            var count = 0;
             
-            if (productsToShow.length === 0) {
-                html = '<div class="empty-state" style="padding: 2rem; background: white; border-radius: 12px; text-align: center;"><div class="empty-icon" style="font-size:3rem; color: #ccc;">📦</div><div class="empty-text" style="font-size:1.1rem;">暂无产品</div><div class="empty-subtext">通过上方表单添加或上传文件导入</div></div>';
-            } else {
-                productsToShow.forEach(function(code) {
-                    var product = catalogData[code];
-                    
-                    html += '<div class="manage-product-card">';
+            var sortedCodes = Object.keys(catalogData).sort();
+
+            sortedCodes.forEach(function(code) {
+                var product = catalogData[code];
+                if (manageSearchTerm && !code.toUpperCase().includes(manageSearchTerm) &&
+                    !(product.supplier && product.supplier.toUpperCase().includes(manageSearchTerm))) {
+                    return;
+                }
+                count++;
                 
-                    html += '<div class="manage-product-content">';
-                    html += '<div class="manage-product-header">';
-                    html += '<div class="manage-product-code">📦 ' + code + '</div>';
-                    html += '</div>';
-                    
-                    html += '<div class="manage-specs-grid">';
-                    html += '<div class="manage-spec-item"><label>💰 码价</label><div class="value">' + product.price + '</div></div>';
-                    html += '<div class="manage-spec-item"><label>💰 米价</label><div class="value">' + product.priceAlt + '</div></div>';
-                    html += '<div class="manage-spec-item"><label>📏 门幅</label><div class="value">' + product.width + '</div></div>';
-                    html += '<div class="manage-spec-item"><label>⚖️ 克重</label><div class="value">' + product.weight + '</div></div>';
-                    
-                    html += '<div class="manage-product-full-row">';
-                    html += '<label>🧵 成分</label>';
-                    html += '<div class="value">' + product.composition + '</div>';
-                    html += '</div>';
-                    
-                    html += '<div class="manage-product-full-row">';
-                    html += '<label>🏭 供应商</label>';
-                    html += '<div class="value">' + product.supplier + '</div>';
-                    html += '</div>';
+                html += '<div class="manage-product-card">';
+            
+                html += '<div class="manage-product-content">';
+                html += '<div class="manage-product-header">';
+                html += '<div class="manage-product-code">📦 ' + code + '</div>';
+                html += '</div>';
+                
+                html += '<div class="manage-specs-grid">';
+                html += '<div class="manage-spec-item"><label>💰 码价</label><div class="value">' + product.price + '</div></div>';
+                html += '<div class="manage-spec-item"><label>💰 米价</label><div class="value">' + product.priceAlt + '</div></div>';
+                html += '<div class="manage-spec-item"><label>📏 门幅</label><div class="value">' + product.width + '</div></div>';
+                html += '<div class="manage-spec-item"><label>⚖️ 克重</label><div class="value">' + product.weight + '</div></div>';
+                
+                html += '<div class="manage-product-full-row">';
+                html += '<label>🧵 成分</label>';
+                html += '<div class="value">' + product.composition + '</div>';
+                html += '</div>';
+                
+                html += '<div class="manage-product-full-row">';
+                html += '<label>🏭 供应商</label>';
+                html += '<div class="value">' + product.supplier + '</div>';
+                html += '</div>';
 
-                    html += '</div>';
-                    
-                    if (product.notes && product.notes !== '-') {
-                        html += '<div class="manage-product-notes">' + product.notes + '</div>';
-                    }
-                    
-                    html += '</div>';
+                html += '</div>';
+                
+                if (product.notes && product.notes !== '-') {
+                    html += '<div class="manage-product-notes">' + product.notes + '</div>';
+                }
+                
+                html += '</div>';
 
-                    html += '<div class="manage-product-footer">';
-                    html += '<div class="manage-product-image-container">';
-                    if (product.image) {
-                        html += '<img src="' + product.image + '" alt="底卡" class="manage-product-image" data-code="' + code + '">';
-                    } else {
-                        html += '<div class="manage-product-image" style="display:flex; align-items:center; justify-content:center; background:#eee; color:#aaa; font-size:0.7rem; text-align:center;"><span>无图片</span></div>';
-                    }
-                    html += '</div>';
-                    html += '<div class="manage-product-actions">';
-                    html += '<button class="btn-edit" onclick="editProduct(\'' + code + '\')">编辑</button>';
-                    html += '<button class="btn-remove" onclick="deleteProductFromList(\'' + code + '\')">删除</button>';
-                    html += '</div>';
-                    html += '</div>';
+                html += '<div class="manage-product-footer">';
+                html += '<div class="manage-product-image-container">';
+                if (product.image) {
+                    html += '<img src="' + product.image + '" alt="底卡" class="manage-product-image" data-code="' + code + '">';
+                } else {
+                    html += '<div class="manage-product-image" style="display:flex; align-items:center; justify-content:center; background:#eee; color:#aaa; font-size:0.7rem; text-align:center;"><span>无图片</span></div>';
+                }
+                html += '</div>';
+                html += '<div class="manage-product-actions">';
+                html += '<button class="btn-edit" onclick="editProduct(\'' + code + '\')">编辑</button>';
+                html += '<button class="btn-remove" onclick="deleteProductFromList(\'' + code + '\')">删除</button>';
+                html += '</div>';
+                html += '</div>';
 
-                    html += '</div>';
-                });
+                html += '</div>';
+            });
+            
+            // 如果没有产品，显示空状态
+            if (count === 0) {
+                html = '<div class="empty-state" style="padding: 2rem; background: white; border-radius: 12px; text-align: center;"><div class="empty-icon" style="font-size:3rem; color: #ccc;">📦</div><div class="empty-text" style="font-size:1.1rem;">暂无产品</div><div class="empty-subtext">通过上方表单添加或上传文件导入</div></div>';
             }
             
             list.innerHTML = html;
-            
-            // 显示/隐藏加载更多按钮
-            const loadMoreContainer = document.getElementById('loadMoreContainer');
-            if (hasMoreProducts) {
-                loadMoreContainer.style.display = 'block';
-            } else {
-                loadMoreContainer.style.display = 'none';
-            }
-            
             bindImageEvents();
-        }
-
-        function loadMoreProducts() {
-            manageCurrentPage++;
-            renderManageProducts();
         }
 
         function deleteProductFromList(code) {
