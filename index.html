@@ -487,8 +487,6 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            /* 添加固定高度，防止布局抖动 */
-            min-height: 180px;
         }
 
         .manage-product-card:hover {
@@ -515,8 +513,6 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            /* 防止内容溢出导致布局问题 */
-            overflow: hidden;
         }
 
         .manage-specs-grid {
@@ -2125,13 +2121,7 @@
 
                 html += '</div>';
             });
-            
-            // 如果没有产品，显示空状态
-            if (count === 0) {
-                html = '<div class="empty-state" style="padding: 2rem; background: white; border-radius: 12px; text-align: center;"><div class="empty-icon" style="font-size:3rem; color: #ccc;">📦</div><div class="empty-text" style="font-size:1.1rem;">暂无产品</div><div class="empty-subtext">通过上方表单添加或上传文件导入</div></div>';
-            }
-            
-            list.innerHTML = html;
+            list.innerHTML = html || '<div class="empty-state" style="padding: 2rem; background: white; border-radius: 12px; text-align: center;"><div class="empty-icon" style="font-size:3rem; color: #ccc;">📦</div><div class="empty-text" style="font-size:1.1rem;">暂无产品</div><div class="empty-subtext">通过上方表单添加或上传文件导入</div></div>';
             bindImageEvents();
         }
 
