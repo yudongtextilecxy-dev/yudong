@@ -5,13 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="宇东报价">
-    <title>宇东纺织报价系统 - ZA Bank风格</title>
-    <!-- 引入必要的库，与原文件保持一致 -->
+    <title>宇东纺织报价系统 - Cloudflare R2版</title>
+    
+    <!-- 引入必要的库 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- AWS S3 SDK (兼容Cloudflare R2) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aws-sdk/2.1462.0/aws-sdk.min.js"></script>
 
     <style>
         /* ZA Bank 风格变量 */
@@ -19,14 +23,13 @@
             --za-green-light: #52D1B2;
             --za-green-dark: #40A891;
             --za-gradient: linear-gradient(135deg, var(--za-green-light) 0%, var(--za-green-dark) 100%);
-            --za-bg: #f0f2f5; /* 浅灰色背景 */
-            --za-surface: #ffffff; /* 卡片背景 */
+            --za-bg: #f0f2f5;
+            --za-surface: #ffffff;
             --za-text: #1F2937;
             --za-text-secondary: #6B7280;
-            --za-radius-lg: 20px; /* 大圆角 */
+            --za-radius-lg: 20px;
             --za-radius-md: 12px;
             --za-radius-sm: 8px;
-            /* 软阴影 (Neumorphism 效果) */
             --za-shadow: 0 4px 8px rgba(0, 0, 0, 0.05), 0 10px 20px rgba(0, 0, 0, 0.03);
             --za-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
 
@@ -48,6 +51,15 @@
             padding: 0; 
             display: flex;
             justify-content: center;
+            /* 防止移动端滚动时出现白屏 */
+            -webkit-overflow-scrolling: touch;
+            overflow-scrolling: touch;
+            /* 防止重绘问题 */
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            /* 优化渲染 */
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeSpeed;
         }
 
         .container {
@@ -55,6 +67,12 @@
             max-width: 800px; 
             margin: 0 auto;
             padding: 0;
+            /* 防止移动端滚动时出现白屏 */
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+            /* 优化渲染 */
+            will-change: transform;
+            overflow-x: hidden;
         }
 
         /* 顶部 Header 和 Stats 区域 */
@@ -66,6 +84,12 @@
             box-shadow: var(--za-shadow);
             color: white;
             margin-bottom: var(--spacing);
+            /* 防止移动端渲染问题 */
+            position: relative;
+            z-index: 10;
+            /* 优化渲染 */
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
         }
 
         .app-title {
@@ -128,6 +152,12 @@
             padding: 0.5rem;
             margin-bottom: var(--spacing);
             overflow: hidden; 
+            /* 防止移动端渲染问题 */
+            position: relative;
+            z-index: 10;
+            /* 优化渲染 */
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
         }
 
         .tab-button {
@@ -158,15 +188,20 @@
 
         .tab-button:active {
             transform: scale(0.95);
+            transition: transform 0.1s ease;
         }
         .tab-button.active:active {
             transform: translateY(-1px) scale(0.95);
         }
 
-
         /* 主内容区域 */
         .main-content {
             padding: 0 var(--spacing) var(--spacing) var(--spacing); 
+            /* 防止移动端滚动时出现白屏 */
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+            /* 优化渲染 */
+            will-change: transform;
         }
 
         .tab-content {
@@ -176,15 +211,21 @@
             border-radius: var(--za-radius-lg);
             box-shadow: var(--za-shadow);
             overflow: hidden; 
+            /* 防止移动端渲染问题 */
+            position: relative;
+            z-index: 1;
+            /* 优化渲染 */
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
         }
 
         .tab-content.active {
             display: block;
-            animation: fadeIn 0.4s ease-out;
+            animation: fadeIn 0.3s ease-out;
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(5px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
@@ -267,7 +308,6 @@
             color: white;
         }
 
-        /* ✅ 修复 (Request 2): 使用 ::before 伪元素代替 border-left */
         .hint-text {
             background: #f0f9f8;
             padding: 0.75rem;
@@ -275,9 +315,8 @@
             color: var(--za-text-secondary);
             font-size: 0.875rem;
             margin-bottom: 1rem;
-            position: relative; /* 1. 添加 relative */
-            overflow: hidden;   /* 2. 保持 overflow */
-            /* border-left: 4px solid var(--za-green-light); */ /* 3. 移除 border-left */
+            position: relative;
+            overflow: hidden;
         }
         
         .hint-text::before {
@@ -286,22 +325,21 @@
             left: 0;
             top: 0;
             bottom: 0;
-            width: 4px; /* 4. 伪元素宽度等于原 border 宽度 */
+            width: 4px;
             background-color: var(--za-green-light);
-            border-top-left-radius: var(--za-radius-sm); /* 5. 伪元素跟随父元素圆角 */
+            border-top-left-radius: var(--za-radius-sm);
             border-bottom-left-radius: var(--za-radius-sm);
         }
 
-        /* 红色提示框 (用于备注) */
+        /* 红色提示框 */
         .hint-text.hint-error {
             background: #FDE8E8;
             color: color-mix(in srgb, var(--error) 80%, black);
         }
 
         .hint-text.hint-error::before {
-            background-color: var(--error); /* 红色伪元素 */
+            background-color: var(--error);
         }
-
 
         /* 按钮组 */
         .button-row {
@@ -322,6 +360,9 @@
             flex-grow: 1;
             min-width: 120px;
             box-shadow: var(--za-shadow-sm);
+            /* 防止移动端点击闪烁 */
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
 
         .za-btn:active {
@@ -351,6 +392,11 @@
             box-shadow: var(--za-shadow-sm);
             transition: var(--transition);
             overflow: hidden; 
+            /* 防止移动端渲染问题 */
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+            /* 优化渲染 */
+            will-change: transform;
         }
 
         .product-card:hover {
@@ -476,92 +522,123 @@
             margin-top: 1rem;
         }
         
-        /* 产品管理卡片样式 */
+        /* ========== 优化后的产品管理卡片样式 ========== */
         .manage-product-card {
-            background: #f8f8f8;
-            border: 1px solid #e0e0e0;
+            background: var(--za-surface);
+            border: 1px solid #e5e7eb;
             border-radius: var(--za-radius-md);
-            padding: 1rem;
+            margin-bottom: var(--spacing);
             box-shadow: var(--za-shadow-sm);
-            display: grid;
-            grid-template-columns: 1fr auto; 
-            gap: 1rem;
-            align-items: flex-start;
+            transition: var(--transition);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            /* 添加固定高度，防止布局抖动 */
+            min-height: 180px;
+            /* 防止移动端渲染问题 */
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+            /* 防止移动端滚动时出现白屏 */
+            will-change: transform;
+            /* 优化渲染性能 */
+            contain: layout style paint;
         }
 
-        .manage-product-info {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-            grid-column: 1 / 2;
-            min-width: 0; 
+        .manage-product-card:hover {
+            box-shadow: var(--za-shadow);
         }
-        
-        .manage-product-media {
-            grid-column: 2 / 3;
+
+        .manage-product-header {
+            background: linear-gradient(90deg, #f0f9f8, var(--za-surface));
+            padding: 1rem;
+            border-bottom: 1px solid #f0f0f0;
             display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 0.5rem;
+            justify-content: space-between;
+            align-items: center;
         }
-        
+
         .manage-product-code {
             font-size: 1.1rem;
             font-weight: 700;
-            color: var(--za-text);
-            word-break: break-all;
+            color: var(--za-green-dark);
         }
 
-        .manage-product-specs {
-            display: grid;
-            grid-template-columns: auto 1fr; 
-            gap: 0.5rem 1rem; 
-            font-size: 0.875rem;
-            align-items: center; 
-        }
-        .manage-product-spec-label {
-            color: var(--za-text-secondary);
-            white-space: nowrap;
-        }
-        .manage-product-spec-value {
-            font-weight: 600;
-            white-space: nowrap;
+        .manage-product-content {
+            padding: 1rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            /* 防止内容溢出导致布局问题 */
             overflow: hidden;
-            text-overflow: ellipsis;
-            text-align: right; 
         }
-        .manage-product-spec-full {
-            grid-column: 1 / -1; 
-            margin-top: 0.5rem;
-            padding-top: 0.5rem;
-            border-top: 1px dashed #ddd;
+
+        .manage-specs-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex: 1;
         }
-        .manage-product-spec-full .manage-product-spec-label {
+
+        .manage-spec-item {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 0.5rem;
+        }
+
+        .manage-spec-item label {
+            font-size: 0.75rem;
+            color: var(--za-text-secondary);
             margin-bottom: 0.25rem;
-            display: block; 
+            font-weight: 500;
         }
-        .manage-product-spec-value-full {
+
+        .manage-spec-item .value {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--za-text);
+            word-break: break-word;
+        }
+
+        .manage-product-full-row {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+            border-top: 1px dashed #e0e0e0;
+            padding-top: 0.75rem;
+        }
+
+        .manage-product-full-row label {
+            font-size: 0.75rem;
+            color: var(--za-text-secondary);
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+            display: block;
+        }
+
+        .manage-product-full-row .value {
+            font-size: 0.9rem;
             font-weight: 600;
-            white-space: normal;
-            word-break: break-all;
-            text-align: left; 
-            font-size: 0.875rem; 
-            line-height: 1.4;
+            color: var(--za-text);
+            word-break: break-word;
         }
-        
-        /* ✅ 修复 (Request 2): 备注字段使用 ::before 代替 border-left */
+
         .manage-product-notes {
             font-size: 0.875rem;
             color: var(--error);
             font-weight: 600;
             background: #FDE8E8;
-            padding: 0.5rem;
+            padding: 0.75rem;
             border-radius: var(--za-radius-sm);
             word-break: break-word;
             line-height: 1.4;
-            position: relative; /* 1. 添加 relative */
-            overflow: hidden;   /* 2. 保持 overflow */
-            /* border-left: 3px solid var(--error); */ /* 3. 移除 border-left */
+            position: relative;
+            overflow: hidden;
+            margin-top: 0.5rem;
         }
         
         .manage-product-notes::before {
@@ -570,28 +647,44 @@
             left: 0;
             top: 0;
             bottom: 0;
-            width: 3px; /* 4. 伪元素宽度 */
-            background-color: var(--error); /* 5. 伪元素颜色 */
-            border-top-left-radius: var(--za-radius-sm); /* 6. 伪元素圆角 */
+            width: 3px;
+            background-color: var(--error);
+            border-top-left-radius: var(--za-radius-sm);
             border-bottom-left-radius: var(--za-radius-sm);
         }
         
+        .manage-product-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: #f8f8f8;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .manage-product-image-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
         .manage-product-image {
-            width: 120px; 
-            height: 120px; 
-            object-fit: cover; 
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
             border-radius: var(--za-radius-sm);
             border: 1px solid #eee;
             cursor: pointer;
-            margin-top: 0; 
+            /* 防止图片加载导致的布局抖动 */
+            background-color: #f0f0f0;
+            /* 优化图片渲染 */
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
         }
-        
+
         .manage-product-actions {
             display: flex;
             gap: 0.5rem;
-            justify-content: flex-end;
-            margin-top: 0; 
-            width: 120px; 
         }
 
         .btn-edit, .btn-remove {
@@ -602,11 +695,52 @@
             border: none;
             cursor: pointer;
             transition: var(--transition);
-            flex-grow: 1; 
+            min-width: 70px;
+            /* 防止移动端点击闪烁 */
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
 
-        .btn-edit { background: var(--za-green-light); color: white; }
-        .btn-remove { background: var(--error); color: white; }
+        .btn-edit { 
+            background: var(--za-green-light); 
+            color: white; 
+        }
+        .btn-remove { 
+            background: var(--error); 
+            color: white; 
+        }
+        
+        /* ========== 优化后的图片上传按钮样式 ========== */
+        .image-upload-single {
+            background: #f0f9f8;
+            border: 2px dashed var(--za-green-light);
+            padding: 1rem;
+            border-radius: var(--za-radius-sm);
+            margin-bottom: 1rem;
+        }
+        
+        .image-upload-batch {
+            background: #fff8e6;
+            border: 2px dashed var(--warning);
+            padding: 1rem;
+            border-radius: var(--za-radius-sm);
+            margin-bottom: 1rem;
+        }
+        
+        .image-upload-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+        
+        .image-upload-single .image-upload-label {
+            color: var(--za-green-dark);
+        }
+        
+        .image-upload-batch .image-upload-label {
+            color: var(--warning);
+        }
         
         /* 数据备份模块样式 */
         .upload-section {
@@ -640,9 +774,11 @@
             overflow-y: auto;
             border-top: 1px solid #e0e0e0;
             padding-top: 1rem;
+            /* 改善移动端滚动体验 */
+            -webkit-overflow-scrolling: touch;
+            overflow-scrolling: touch;
         }
 
-        /* ✅ 修复 (Request 2): 使用 ::before 伪元素代替 border-left */
         .file-item {
             background: var(--za-surface);
             padding: 0.75rem;
@@ -650,9 +786,8 @@
             margin-bottom: 0.5rem;
             font-size: 0.875rem;
             box-shadow: var(--za-shadow-sm);
-            position: relative; /* 1. 添加 relative */
-            overflow: hidden;   /* 2. 保持 overflow */
-            /* border-left: 3px solid var(--za-green-light); */ /* 3. 移除 border-left */
+            position: relative;
+            overflow: hidden;
         }
         
         .file-item::before {
@@ -661,9 +796,9 @@
             left: 0;
             top: 0;
             bottom: 0;
-            width: 3px; /* 4. 伪元素宽度 */
-            background-color: var(--za-green-light); /* 5. 伪元素颜色 */
-            border-top-left-radius: var(--za-radius-sm); /* 6. 伪元素圆角 */
+            width: 3px;
+            background-color: var(--za-green-light);
+            border-top-left-radius: var(--za-radius-sm);
             border-bottom-left-radius: var(--za-radius-sm);
         }
 
@@ -682,6 +817,30 @@
         .status-success { background: #E6F7E9; color: var(--success); }
         .status-error { background: #FDE8E8; color: var(--error); }
         .status-loading { background: #EFF6FF; color: #007AFF; }
+        
+        /* Cloudflare R2配置区域 */
+        .r2-config {
+            background: #f0f9f8;
+            border: 1px solid var(--za-green-light);
+            border-radius: var(--za-radius-md);
+            padding: var(--spacing);
+            margin-bottom: var(--spacing);
+        }
+        
+        .r2-config h3 {
+            color: var(--za-green-dark);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .r2-config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
         
         /* 响应式调整 */
         @media (max-width: 600px) {
@@ -721,25 +880,76 @@
             
             /* 移动端管理卡片 */
             .manage-product-card {
-                grid-template-columns: 1fr; /* 堆叠 */
-            }
-            .manage-product-info {
-                grid-column: 1 / -1;
-            }
-            .manage-product-media {
-                grid-column: 1 / -1;
-                align-items: flex-start; /* 左对齐 */
-            }
-            .manage-product-image, .manage-product-actions {
-                width: 100%; 
-                max-width: 200px; 
+                margin-bottom: 1rem;
             }
             
-            .manage-product-specs {
-                gap: 0.4rem 0.75rem;
+            .manage-specs-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
             }
-            .manage-product-spec-value {
-                text-align: left; /* 移动端值改为左对齐 */
+            
+            .manage-product-full-row {
+                grid-column: 1;
+            }
+            
+            .manage-product-footer {
+                flex-direction: column;
+                gap: 0.75rem;
+                align-items: stretch;
+            }
+            
+            .manage-product-image-container {
+                justify-content: center;
+            }
+            
+            .manage-product-actions {
+                justify-content: center;
+            }
+            
+            /* 移动端R2配置 */
+            .r2-config-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            /* 改善移动端滚动性能 */
+            .manage-product-list {
+                -webkit-overflow-scrolling: touch;
+                overflow-scrolling: touch;
+            }
+        }
+
+        @media (min-width: 601px) {
+            /* 桌面端管理卡片布局优化 */
+            .manage-product-card {
+                flex-direction: row;
+                min-height: 180px;
+            }
+            
+            .manage-product-content {
+                flex: 1;
+                min-width: 0;
+            }
+            
+            .manage-product-footer {
+                flex-direction: column;
+                justify-content: space-between;
+                width: 140px;
+                flex-shrink: 0;
+                border-top: none;
+                border-left: 1px solid #e0e0e0;
+            }
+            
+            .manage-product-image-container {
+                flex-direction: column;
+            }
+            
+            .manage-product-actions {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .btn-edit, .btn-remove {
+                width: 100%;
             }
         }
 
@@ -756,6 +966,8 @@
             display: none;
             align-items: center;
             justify-content: center;
+            /* 防止移动端滚动穿透 */
+            touch-action: none;
         }
         .image-modal.active {
             display: flex;
@@ -796,6 +1008,66 @@
             overflow: hidden; 
         }
         .close-modal:hover { background: #d32f2f; }
+        
+        /* 上传进度条 */
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background-color: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: var(--za-gradient);
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+        
+        /* 管理产品列表容器 - 修复白屏问题的关键 */
+        .manage-product-list {
+            margin-top: 1rem;
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 5px;
+            /* 改善移动端滚动性能 */
+            -webkit-overflow-scrolling: touch;
+            overflow-scrolling: touch;
+            /* 防止移动端滚动时出现白屏 */
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+            /* 防止重绘问题 */
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            /* 优化渲染性能 */
+            will-change: transform;
+            contain: layout style paint;
+        }
+        
+        /* 分页加载按钮 */
+        .load-more-container {
+            text-align: center;
+            margin-top: 1rem;
+            padding: 1rem;
+        }
+        
+        .load-more-btn {
+            background: var(--za-gradient);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--za-radius-md);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--za-shadow-sm);
+        }
+        
+        .load-more-btn:active {
+            transform: translateY(1px);
+        }
     </style>
 </head>
 <body>
@@ -876,45 +1148,53 @@
                     <form class="manage-form" id="manageForm">
                         <div class="manage-input-group">
                             <label for="codeInput">产品代码</label>
-                            <input type="text" id="codeInput" class="manage-input" required>
+                            <input type="text" id="codeInput" class="manage-input" required placeholder="例如：C6001, YC2001">
                         </div>
                         <div class="manage-input-group">
                             <label for="priceInput">码价</label>
-                            <input type="text" id="priceInput" class="manage-input">
+                            <input type="text" id="priceInput" class="manage-input" placeholder="例如：12.5元/码">
                         </div>
                         <div class="manage-input-group">
                             <label for="priceAltInput">米价</label>
-                            <input type="text" id="priceAltInput" class="manage-input">
+                            <input type="text" id="priceAltInput" class="manage-input" placeholder="例如：12.5元/米-足米">
                         </div>
                         <div class="manage-input-group">
                             <label for="widthInput">门幅</label>
-                            <input type="text" id="widthInput" class="manage-input">
+                            <input type="text" id="widthInput" class="manage-input" placeholder="例如：150cm">
                         </div>
                         <div class="manage-input-group">
                             <label for="compositionInput">成分</label>
-                            <input type="text" id="compositionInput" class="manage-input">
+                            <input type="text" id="compositionInput" class="manage-input" placeholder="例如：100锦纶">
                         </div>
                         <div class="manage-input-group">
                             <label for="weightInput">克重</label>
-                            <input type="text" id="weightInput" class="manage-input">
+                            <input type="text" id="weightInput" class="manage-input" placeholder="例如：90克/平方（gsm）">
                         </div>
                         <div class="manage-input-group">
                             <label for="notesInput">备注</label>
-                            <input type="text" id="notesInput" class="manage-input">
+                            <input type="text" id="notesInput" class="manage-input" placeholder="例如：颜色价格说明等">
                         </div>
                         <div class="manage-input-group">
                             <label for="supplierInput">供应商</label>
-                            <input type="text" id="supplierInput" class="manage-input">
-                        </div>
-                        <div class="manage-input-group">
-                            <label for="imageInput">底卡图片 (单张)</label>
-                            <input type="file" id="imageInput" class="manage-input" accept="image/*">
+                            <input type="text" id="supplierInput" class="manage-input" placeholder="例如：凯泓K5【KH86】">
                         </div>
                         
-                        <!-- (Request 1): 优化批量上传按钮 (保持 V4 修复) -->
-                        <div class="manage-input-group">
-                            <label for="bulkImageInput">底卡图片 (批量)</label>
-                            <input type="file" id="bulkImageInput" class="manage-input" multiple accept="image/*" onchange="document.getElementById('manageFormStatus').textContent='已选择 ' + this.files.length + ' 张图片待上传'">
+                        <!-- 单张图片上传 -->
+                        <div class="manage-input-group image-upload-single">
+                            <label for="imageInput" class="image-upload-label">📷 底卡图片（单张）</label>
+                            <input type="file" id="imageInput" class="manage-input" accept="image/*">
+                            <div class="progress-bar" id="imageUploadProgress" style="display: none;">
+                                <div class="progress-fill" id="imageUploadProgressFill"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- 批量图片上传 -->
+                        <div class="manage-input-group image-upload-batch">
+                            <label for="bulkImageInput" class="image-upload-label">📸 底卡图片（批量）</label>
+                            <input type="file" id="bulkImageInput" class="manage-input" multiple accept="image/*">
+                            <div class="progress-bar" id="bulkImageUploadProgress" style="display: none;">
+                                <div class="progress-fill" id="bulkImageUploadProgressFill"></div>
+                            </div>
                         </div>
                         
                         <div class="manage-btn-row">
@@ -936,7 +1216,10 @@
                         </svg>
                         <input type="text" id="manageSearchInput" class="manage-search" placeholder="搜索产品代码或供应商..." oninput="filterManageProducts()" style="padding-left: 3rem;">
                     </div>
-                    <div class="manage-product-list" id="manageProductList" style="margin-top: 1rem; max-height: 500px; overflow-y: auto; padding-right: 5px;"></div>
+                    <div class="manage-product-list" id="manageProductList"></div>
+                    <div class="load-more-container" id="loadMoreContainer" style="display: none;">
+                        <button class="load-more-btn" onclick="loadMoreProducts()">加载更多</button>
+                    </div>
                 </div>
             </div>
 
@@ -945,6 +1228,41 @@
                 <h2 class="module-title">数据备份</h2>
                 
                 <div id="dataStatusMsg"></div>
+                
+                <!-- Cloudflare R2配置区域 -->
+                <div class="r2-config">
+                    <h3>☁️ Cloudflare R2 + 自定义域名配置</h3>
+                    <div class="r2-config-grid">
+                        <div class="manage-input-group">
+                            <label for="r2AccountId">Account ID</label>
+                            <input type="text" id="r2AccountId" class="manage-input" placeholder="请输入Cloudflare Account ID">
+                        </div>
+                        <div class="manage-input-group">
+                            <label for="r2AccessKey">Access Key ID</label>
+                            <input type="text" id="r2AccessKey" class="manage-input" placeholder="请输入R2 Access Key ID">
+                        </div>
+                        <div class="manage-input-group">
+                            <label for="r2SecretKey">Secret Access Key</label>
+                            <input type="password" id="r2SecretKey" class="manage-input" placeholder="请输入R2 Secret Access Key">
+                        </div>
+                        <div class="manage-input-group">
+                            <label for="r2Bucket">Bucket 名称</label>
+                            <input type="text" id="r2Bucket" class="manage-input" placeholder="请输入存储桶名称">
+                        </div>
+                        <div class="manage-input-group">
+                            <label for="r2CustomDomain">自定义域名</label>
+                            <input type="text" id="r2CustomDomain" class="manage-input" placeholder="https://img.yudong-textile.top" value="https://img.yudong-textile.top">
+                        </div>
+                    </div>
+                    <div class="button-row">
+                        <button class="za-btn za-btn-primary" onclick="saveR2Config()">保存配置</button>
+                        <button class="za-btn za-btn-secondary" onclick="testR2Connection()">测试连接</button>
+                        <button class="za-btn za-btn-warning" onclick="migrateImagesToR2()">迁移图片到R2</button>
+                    </div>
+                    <p class="hint-text" style="margin-top: 1rem; margin-bottom: 0;">
+                        💡 配置说明：在Cloudflare控制台创建R2存储桶，将您的域名 img.yudong-textile.top 通过CNAME记录指向R2存储桶。
+                    </p>
+                </div>
                 
                 <div class="upload-section">
                     <!-- 批量上传/导入 -->
@@ -1015,8 +1333,18 @@
         const DB_NAME = 'YudongFabricDB';
         const DB_VERSION = 1;
         const STORE_NAME = 'catalogData';
+        
+        // Cloudflare R2配置
+        var r2Config = JSON.parse(localStorage.getItem('r2-config') || '{}');
+        var s3Client = null;
+        
+        // 产品管理分页变量
+        var manageCurrentPage = 1;
+        var managePageSize = 20;
+        var filteredManageProducts = [];
+        var hasMoreProducts = false;
 
-        // ============== IndexedDB 逻辑 (保持不变) ==============
+        // ============== IndexedDB 逻辑 ==============
         function initDB() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -1088,8 +1416,255 @@
             }
         }
 
-        // ============== UI/状态/功能函数 (功能逻辑不变) ==============
+        // ============== Cloudflare R2功能 ==============
+        function saveR2Config() {
+            const accountId = document.getElementById('r2AccountId').value.trim();
+            const accessKey = document.getElementById('r2AccessKey').value.trim();
+            const secretKey = document.getElementById('r2SecretKey').value.trim();
+            const bucket = document.getElementById('r2Bucket').value.trim();
+            const customDomain = document.getElementById('r2CustomDomain').value.trim();
+            
+            if (!accountId || !accessKey || !secretKey || !bucket || !customDomain) {
+                showStatus('请填写完整的Cloudflare R2配置', 'error', 'dataStatusMsg');
+                return;
+            }
+            
+            // 确保customDomain以斜杠结尾
+            const formattedCustomDomain = customDomain.endsWith('/') ? customDomain : customDomain + '/';
+            
+            r2Config = { 
+                accountId, 
+                accessKey, 
+                secretKey, 
+                bucket, 
+                customDomain: formattedCustomDomain 
+            };
+            localStorage.setItem('r2-config', JSON.stringify(r2Config));
+            showStatus('Cloudflare R2配置已保存', 'success', 'dataStatusMsg');
+            
+            // 初始化S3客户端 (兼容R2)
+            initS3Client();
+        }
+        
+        function loadR2Config() {
+            document.getElementById('r2AccountId').value = r2Config.accountId || '';
+            document.getElementById('r2AccessKey').value = r2Config.accessKey || '';
+            document.getElementById('r2SecretKey').value = r2Config.secretKey || '';
+            document.getElementById('r2Bucket').value = r2Config.bucket || '';
+            document.getElementById('r2CustomDomain').value = r2Config.customDomain || 'https://img.yudong-textile.top';
+            
+            if (r2Config.accessKey && r2Config.secretKey) {
+                initS3Client();
+            }
+        }
+        
+        function initS3Client() {
+            if (!r2Config.accessKey || !r2Config.secretKey) return;
+            
+            try {
+                AWS.config.update({
+                    accessKeyId: r2Config.accessKey,
+                    secretAccessKey: r2Config.secretKey,
+                    region: 'auto'
+                });
+                
+                s3Client = new AWS.S3({
+                    endpoint: `https://${r2Config.accountId}.r2.cloudflarestorage.com`,
+                    signatureVersion: 'v4'
+                });
+                
+                console.log('Cloudflare R2 S3客户端已初始化');
+            } catch (error) {
+                console.error('S3客户端初始化失败:', error);
+                showStatus('S3客户端初始化失败: ' + error.message, 'error', 'dataStatusMsg');
+            }
+        }
+        
+        function testR2Connection() {
+            if (!r2Config.accessKey || !r2Config.bucket) {
+                showStatus('请先保存Cloudflare R2配置', 'error', 'dataStatusMsg');
+                return;
+            }
+            
+            if (!s3Client) initS3Client();
+            
+            showStatus('正在测试R2连接...', 'loading', 'dataStatusMsg');
+            
+            // 使用简单文件上传测试连接
+            const testContent = new Blob(['R2 Connection Test'], { type: 'text/plain' });
+            const testKey = `test-connection-${Date.now()}.txt`;
+            
+            s3Client.putObject({
+                Bucket: r2Config.bucket,
+                Key: testKey,
+                Body: testContent,
+                ContentType: 'text/plain'
+            }, function(err, data) {
+                if (err) {
+                    console.error('R2连接测试失败:', err);
+                    let errorMsg = 'R2连接测试失败: ';
+                    
+                    if (err.statusCode === 403) {
+                        errorMsg = '权限错误：请检查Access Key/Secret Key是否正确';
+                    } else if (err.statusCode === 404) {
+                        errorMsg = '存储桶不存在：请检查Bucket名称是否正确';
+                    } else if (err.statusCode === 400) {
+                        errorMsg = '请求参数错误：请检查配置格式';
+                    } else if (err.code === 'NetworkingError' || err.message?.includes('CORS')) {
+                        errorMsg = '网络错误：请检查网络连接或CORS配置';
+                    } else {
+                        errorMsg += err.message || '未知错误，请检查网络连接和配置';
+                    }
+                    
+                    showStatus(errorMsg, 'error', 'dataStatusMsg');
+                } else {
+                    // 测试成功，删除测试文件
+                    s3Client.deleteObject({
+                        Bucket: r2Config.bucket,
+                        Key: testKey
+                    }, function(deleteErr) {
+                        if (deleteErr) {
+                            console.warn('测试文件删除失败:', deleteErr);
+                        }
+                    });
+                    
+                    // 测试自定义域名访问
+                    testCustomDomainAccess();
+                }
+            });
+        }
+        
+        function testCustomDomainAccess() {
+            if (!r2Config.customDomain) {
+                showStatus('✅ R2连接测试成功！配置正确。', 'success', 'dataStatusMsg');
+                return;
+            }
+            
+            // 创建一个测试图片URL
+            const testImageUrl = `${r2Config.customDomain}test-image-${Date.now()}.jpg`;
+            
+            // 测试图片加载
+            const testImage = new Image();
+            testImage.onload = function() {
+                showStatus('✅ R2连接测试成功！自定义域名访问正常。', 'success', 'dataStatusMsg');
+            };
+            testImage.onerror = function() {
+                showStatus('⚠️ R2连接成功，但自定义域名访问可能有问题，请检查域名解析。', 'warning', 'dataStatusMsg');
+            };
+            testImage.src = testImageUrl;
+        }
+        
+        // 上传图片到Cloudflare R2 - 使用自定义域名
+        async function uploadToR2(file, productCode) {
+            return new Promise((resolve, reject) => {
+                if (!s3Client) {
+                    reject(new Error('请先配置Cloudflare R2'));
+                    return;
+                }
+                
+                // 使用纯产品代码作为文件名
+                const key = `yudong-fabric/${productCode}.jpg`;
+                
+                // 显示上传进度
+                document.getElementById('imageUploadProgress').style.display = 'block';
+                document.getElementById('imageUploadProgressFill').style.width = '0%';
+                
+                s3Client.upload({
+                    Bucket: r2Config.bucket,
+                    Key: key,
+                    Body: file,
+                    ContentType: file.type
+                }, function(err, data) {
+                    document.getElementById('imageUploadProgress').style.display = 'none';
+                    
+                    if (err) {
+                        console.error('R2上传失败:', err);
+                        reject(err);
+                    } else {
+                        // 使用自定义域名构建图片URL
+                        const imageUrl = `${r2Config.customDomain}${productCode}.jpg`;
+                        resolve(imageUrl);
+                    }
+                }).on('httpUploadProgress', function(progress) {
+                    const percent = Math.round((progress.loaded / progress.total) * 100);
+                    document.getElementById('imageUploadProgressFill').style.width = percent + '%';
+                });
+            });
+        }
+        
+        // 迁移现有图片到Cloudflare R2
+        async function migrateImagesToR2() {
+            if (!r2Config.accessKey) {
+                showStatus('请先配置Cloudflare R2', 'error', 'dataStatusMsg');
+                return;
+            }
+            
+            const productsWithImages = Object.values(catalogData).filter(p => 
+                p.image && (p.image.startsWith('data:image') || !p.image.includes(r2Config.customDomain))
+            );
+            
+            if (productsWithImages.length === 0) {
+                showStatus('没有需要迁移的图片', 'success', 'dataStatusMsg');
+                return;
+            }
+            
+            showStatus(`开始迁移 ${productsWithImages.length} 张图片到Cloudflare R2...`, 'loading', 'dataStatusMsg');
+            
+            let successCount = 0;
+            let failCount = 0;
+            
+            for (let i = 0; i < productsWithImages.length; i++) {
+                const product = productsWithImages[i];
+                try {
+                    // 如果已经是base64图片，需要上传
+                    if (product.image.startsWith('data:image')) {
+                        const file = dataURLtoFile(product.image, product.code);
+                        const imageUrl = await uploadToR2(file, product.code);
+                        catalogData[product.code].image = imageUrl;
+                    } 
+                    // 如果已经是R2图片但不是自定义域名，更新URL
+                    else if (product.image.includes('.r2.dev') && r2Config.customDomain) {
+                        const oldUrl = product.image;
+                        const fileName = oldUrl.split('/').pop();
+                        const newUrl = `${r2Config.customDomain}${fileName}`;
+                        catalogData[product.code].image = newUrl;
+                    }
+                    
+                    successCount++;
+                    
+                    // 每成功10个保存一次
+                    if (successCount % 10 === 0) {
+                        await saveData();
+                    }
+                } catch (error) {
+                    console.error(`迁移产品 ${product.code} 失败:`, error);
+                    failCount++;
+                }
+                
+                // 更新进度
+                const progress = Math.round((i + 1) / productsWithImages.length * 100);
+                showStatus(`迁移进度: ${progress}% (成功: ${successCount}, 失败: ${failCount})`, 'loading', 'dataStatusMsg');
+            }
+            
+            // 最后保存一次
+            await saveData();
+            showStatus(`迁移完成！成功: ${successCount}, 失败: ${failCount}`, 'success', 'dataStatusMsg');
+        }
+        
+        // base64转File函数
+        function dataURLtoFile(dataurl, filename) {
+            const arr = dataurl.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new File([u8arr], filename, { type: mime });
+        }
 
+        // ============== UI/状态/功能函数 ==============
         function updateStats() {
             document.getElementById('dataCount').textContent = Object.keys(catalogData).length;
             document.getElementById('fileCount').textContent = uploadedFiles.length;
@@ -1110,10 +1685,9 @@
             var statusDiv = document.getElementById(targetId);
             if (!statusDiv) return;
 
-            // 确保容器可见
             statusDiv.style.display = 'block';
             statusDiv.className = 'status-msg status-' + type;
-            statusDiv.textContent = message;
+            statusDiv.innerHTML = message;
 
             if (type === 'success' || type === 'error') {
                 setTimeout(function() { statusDiv.style.display = 'none'; }, 5000);
@@ -1121,27 +1695,41 @@
         }
         
         // --- 标签页切换逻辑 ---
-        // (保持 V3/V4 修复后的同步逻辑)
+        var tabCache = {
+            query: true,
+            manage: false,
+            data: false
+        };
+
         function switchTab(tabName) {
             // 移除所有按钮和内容的 active 状态
-            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
 
             // 激活当前标签页
             document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.add('active');
             document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Btn').classList.add('active');
 
-            // 如果切换到管理页，需要重新渲染列表
-            if (tabName === 'manage') {
-                renderManageProducts();
-            } else if (tabName === 'data') {
-                renderFilesList();
+            // 延迟加载非活动标签页内容
+            if (tabName === 'manage' && !tabCache.manage) {
+                setTimeout(() => {
+                    renderManageProducts();
+                    tabCache.manage = true;
+                }, 50);
+            } else if (tabName === 'data' && !tabCache.data) {
+                setTimeout(() => {
+                    renderFilesList();
+                    loadR2Config();
+                    tabCache.data = true;
+                }, 50);
             }
         }
 
-
         // --- 搜索相关 ---
-        
         document.getElementById('searchInput').addEventListener('input', function(e) {
             clearTimeout(searchTimeout);
             var value = e.target.value.trim();
@@ -1161,7 +1749,6 @@
         function renderHistory() {
             var historyDiv = document.getElementById('searchHistory');
             var html = '';
-            // 最多显示 5 条历史记录
             searchHistory.slice(-5).reverse().forEach(function(h) {
                 html += '<div class="history-item" onclick="loadHistory(\'' + h.replace(/'/g, "\\'") + '\')">' + h + '</div>';
             });
@@ -1172,7 +1759,7 @@
             document.getElementById('searchInput').value = query;
             handleSearch(query);
             renderResults();
-            switchTab('query'); // 确保切换到查询标签页
+            switchTab('query');
         }
 
         function clearSearchHistory() {
@@ -1185,7 +1772,6 @@
         }
 
         function parseRangeInput(input) {
-            // (原文件逻辑不变)
             var ranges = [];
             var items = input.split(/[,，\s]+/).map(function(item) { return item.trim(); }).filter(function(item) { return item; });
             var type = null;
@@ -1231,7 +1817,6 @@
         }
 
         function performRangeQuery(ranges, type) {
-            // (原文件逻辑不变)
             var results = [];
             var field = type === 'price' ? 'priceAlt' : 'weight';
             ranges.forEach(function(range) {
@@ -1263,7 +1848,6 @@
         }
 
         function handleSearch(inputValue) {
-            // (原文件逻辑不变)
             var input = (inputValue || document.getElementById('searchInput').value).trim().toUpperCase();
             if (!input) {
                 searchResults = [];
@@ -1317,7 +1901,6 @@
         }
 
         function renderResults() {
-            // (原文件逻辑不变)
             var area = document.getElementById('resultsArea');
             updateStats();
             
@@ -1396,7 +1979,6 @@
             html += '<div class="spec-item" style="grid-column: span 2;"><label>🧵 成分</label><div class="value-normal">' + product.composition + '</div></div>';
             html += '</div>';
 
-            // ✅ 修复 (Request 2): 使用 class 代替 inline-style 来修复溢出
             if (product.notes && product.notes !== '-') {
                 html += '<div class="hint-text hint-error" style="margin-bottom: 1rem;"><div style="font-weight: 700; color: var(--error); margin-bottom: 0.25rem;">⚠️ 备注</div>' + product.notes + '</div>';
             }
@@ -1417,7 +1999,6 @@
         }
 
         function showImage(imageSrc, productCode) {
-            // (原文件逻辑不变)
             var modal = document.getElementById('imageModal');
             var modalImg = document.getElementById('modalImage');
             modalImg.src = imageSrc;
@@ -1426,19 +2007,16 @@
         }
 
         function closeImageModal() {
-            // (原文件逻辑不变)
             document.getElementById('imageModal').classList.remove('active');
         }
 
         document.getElementById('imageModal').addEventListener('click', function(e) {
-            // (原文件逻辑不变)
             if (e.target === this) {
                 closeImageModal();
             }
         });
 
         function showImageByData(event) {
-            // (原文件逻辑不变)
             const target = event.target.closest('a') || event.target;
             const code = target.dataset.code;
             if (code && catalogData[code] && catalogData[code].image) {
@@ -1449,7 +2027,6 @@
         }
         
         function bindImageEvents() {
-            // (原文件逻辑不变)
             const resultsArea = document.getElementById('resultsArea');
             if (resultsArea) {
                 resultsArea.removeEventListener('click', handleImageLinkClick);
@@ -1470,7 +2047,6 @@
         }
 
         function selectFuzzyMatch(code) {
-            // (原文件逻辑不变)
             document.getElementById('searchInput').value = code;
             handleSearch(code);
             renderResults();
@@ -1478,7 +2054,6 @@
         }
 
         function selectCode(code) {
-            // (原文件逻辑不变)
             document.getElementById('searchInput').value = code;
             handleSearch(code);
             renderResults();
@@ -1486,9 +2061,7 @@
         }
 
         // --- 产品管理 ---
-
-        function addOrUpdateProduct() {
-            // (原文件逻辑不变)
+        async function addOrUpdateProduct() {
             var code = document.getElementById('codeInput').value.trim().toUpperCase();
             if (!code || !code.match(/^[YC]*[ACDFGJMST]\d+/)) {
                 showStatus('产品代码格式无效（例如：C6001, YC2001）', 'error', 'manageFormStatus');
@@ -1497,30 +2070,37 @@
             if (catalogData[code] && editingCode !== code) {
                 if (!confirm('产品代码已存在，是否覆盖？')) return;
             }
+            
             var imageFile = document.getElementById('imageInput').files[0];
-            var imageBase64 = catalogData[code] ? catalogData[code].image : null;
+            var imageUrl = catalogData[code] ? catalogData[code].image : null;
+            
             if (imageFile) {
                 if (imageFile.size > 5 * 1024 * 1024) {
                     showStatus('图片过大（>5MB），请压缩后上传', 'error', 'manageFormStatus');
                     return;
                 }
-                var reader = new FileReader();
-                reader.onload = function(e) {
-                    imageBase64 = e.target.result;
-                    const totalSize = JSON.stringify(catalogData).length + imageBase64.length;
-                    if (totalSize > 50 * 1024 * 1024) {
-                        showStatus('数据总量过大，建议清理或用云备份', 'warning', 'manageFormStatus');
-                    }
-                    saveProduct(code, imageBase64);
-                };
-                reader.readAsDataURL(imageFile);
-            } else {
-                saveProduct(code, imageBase64);
+                
+                try {
+                    // 上传到Cloudflare R2，使用纯产品代码命名
+                    imageUrl = await uploadToR2(imageFile, code);
+                    showStatus('图片上传成功', 'success', 'manageFormStatus');
+                } catch (error) {
+                    console.error('Cloudflare R2上传失败，使用本地存储:', error);
+                    // 上传失败，使用base64作为后备
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        imageUrl = e.target.result;
+                        saveProductData(code, imageUrl);
+                    };
+                    reader.readAsDataURL(imageFile);
+                    return;
+                }
             }
+            
+            saveProductData(code, imageUrl);
         }
 
-        function saveProduct(code, imageBase64) {
-            // (原文件逻辑不变)
+        function saveProductData(code, imageUrl) {
             catalogData[code] = {
                 code: code,
                 price: document.getElementById('priceInput').value || '-',
@@ -1530,8 +2110,9 @@
                 weight: document.getElementById('weightInput').value || '-',
                 notes: document.getElementById('notesInput').value || '-',
                 supplier: document.getElementById('supplierInput').value || '-',
-                image: imageBase64
+                image: imageUrl
             };
+            
             saveData().then(() => {
                 updateStats();
                 renderManageProducts();
@@ -1549,15 +2130,12 @@
         }
 
         function editProduct(code) {
-            // (原文件逻辑不变)
             var product = catalogData[code];
             if (!product) return;
             
-            // 切换到管理页
             switchTab('manage');
             
-            // 平滑滚动到表单区域
-            setTimeout(() => { // 延迟以确保 tab 切换动画完成
+            setTimeout(() => {
                 const formElement = document.getElementById('manageForm').closest('.upload-card');
                 if (formElement) {
                     formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1574,7 +2152,6 @@
             document.getElementById('notesInput').value = product.notes;
             document.getElementById('supplierInput').value = product.supplier;
 
-            // 按钮状态切换
             document.getElementById('addBtn').style.display = 'none';
             document.getElementById('updateBtn').style.display = 'inline-block';
             document.getElementById('deleteBtn').style.display = 'inline-block';
@@ -1582,7 +2159,6 @@
         }
 
         function deleteProduct() {
-            // (原文件逻辑不变)
             if (!editingCode || !confirm('确定删除此产品 ' + editingCode + ' 吗？')) return;
             delete catalogData[editingCode];
             saveData().then(() => {
@@ -1594,7 +2170,6 @@
         }
 
         function clearForm() {
-            // (原文件逻辑不变)
             document.getElementById('manageForm').reset();
             document.getElementById('imageInput').value = '';
             document.getElementById('bulkImageInput').value = '';
@@ -1607,83 +2182,106 @@
         }
 
         function filterManageProducts() {
-            // (原文件逻辑不变)
             manageSearchTerm = document.getElementById('manageSearchInput').value.toUpperCase();
+            manageCurrentPage = 1;
             renderManageProducts();
         }
 
+        // ========== 优化后的产品管理卡片渲染函数 ==========
         function renderManageProducts() {
-            // (原文件逻辑不变, 保持 V3/V4 的布局)
+            // 过滤产品
+            filteredManageProducts = Object.keys(catalogData)
+                .filter(code => {
+                    if (!manageSearchTerm) return true;
+                    const product = catalogData[code];
+                    return code.toUpperCase().includes(manageSearchTerm) || 
+                          (product.supplier && product.supplier.toUpperCase().includes(manageSearchTerm));
+                })
+                .sort();
+            
+            // 计算分页
+            const startIndex = (manageCurrentPage - 1) * managePageSize;
+            const endIndex = startIndex + managePageSize;
+            const productsToShow = filteredManageProducts.slice(0, endIndex);
+            hasMoreProducts = endIndex < filteredManageProducts.length;
+            
             var list = document.getElementById('manageProductList');
             var html = '';
-            var count = 0;
             
-            var sortedCodes = Object.keys(catalogData).sort();
-
-            sortedCodes.forEach(function(code) {
-                var product = catalogData[code];
-                if (manageSearchTerm && !code.toUpperCase().includes(manageSearchTerm) &&
-                    !(product.supplier && product.supplier.toUpperCase().includes(manageSearchTerm))) {
-                    return;
-                }
-                count++;
+            if (productsToShow.length === 0) {
+                html = '<div class="empty-state" style="padding: 2rem; background: white; border-radius: 12px; text-align: center;"><div class="empty-icon" style="font-size:3rem; color: #ccc;">📦</div><div class="empty-text" style="font-size:1.1rem;">暂无产品</div><div class="empty-subtext">通过上方表单添加或上传文件导入</div></div>';
+            } else {
+                productsToShow.forEach(function(code) {
+                    var product = catalogData[code];
+                    
+                    html += '<div class="manage-product-card">';
                 
-                html += '<div class="manage-product-card">';
+                    html += '<div class="manage-product-content">';
+                    html += '<div class="manage-product-header">';
+                    html += '<div class="manage-product-code">📦 ' + code + '</div>';
+                    html += '</div>';
+                    
+                    html += '<div class="manage-specs-grid">';
+                    html += '<div class="manage-spec-item"><label>💰 码价</label><div class="value">' + product.price + '</div></div>';
+                    html += '<div class="manage-spec-item"><label>💰 米价</label><div class="value">' + product.priceAlt + '</div></div>';
+                    html += '<div class="manage-spec-item"><label>📏 门幅</label><div class="value">' + product.width + '</div></div>';
+                    html += '<div class="manage-spec-item"><label>⚖️ 克重</label><div class="value">' + product.weight + '</div></div>';
+                    
+                    html += '<div class="manage-product-full-row">';
+                    html += '<label>🧵 成分</label>';
+                    html += '<div class="value">' + product.composition + '</div>';
+                    html += '</div>';
+                    
+                    html += '<div class="manage-product-full-row">';
+                    html += '<label>🏭 供应商</label>';
+                    html += '<div class="value">' + product.supplier + '</div>';
+                    html += '</div>';
+
+                    html += '</div>';
+                    
+                    if (product.notes && product.notes !== '-') {
+                        html += '<div class="manage-product-notes">' + product.notes + '</div>';
+                    }
+                    
+                    html += '</div>';
+
+                    html += '<div class="manage-product-footer">';
+                    html += '<div class="manage-product-image-container">';
+                    if (product.image) {
+                        html += '<img src="' + product.image + '" alt="底卡" class="manage-product-image" data-code="' + code + '">';
+                    } else {
+                        html += '<div class="manage-product-image" style="display:flex; align-items:center; justify-content:center; background:#eee; color:#aaa; font-size:0.7rem; text-align:center;"><span>无图片</span></div>';
+                    }
+                    html += '</div>';
+                    html += '<div class="manage-product-actions">';
+                    html += '<button class="btn-edit" onclick="editProduct(\'' + code + '\')">编辑</button>';
+                    html += '<button class="btn-remove" onclick="deleteProductFromList(\'' + code + '\')">删除</button>';
+                    html += '</div>';
+                    html += '</div>';
+
+                    html += '</div>';
+                });
+            }
             
-                // --- Info Column ---
-                html += '<div class="manage-product-info">';
-                html += '<div class="manage-product-code">📦 ' + code + '</div>';
-                
-                // --- 新的规格布局 ---
-                html += '<div class="manage-product-specs">';
-                html += '<span class="manage-product-spec-label">码价:</span><span class="manage-product-spec-value">' + product.price + '</span>';
-                html += '<span class="manage-product-spec-label">米价:</span><span class="manage-product-spec-value">' + product.priceAlt + '</span>';
-                html += '<span class="manage-product-spec-label">门幅:</span><span class="manage-product-spec-value">' + product.width + '</span>';
-                html += '<span class="manage-product-spec-label">克重:</span><span class="manage-product-spec-value">' + product.weight + '</span>';
-                
-                // --- 单独占行的项目 ---
-                html += '<div class="manage-product-spec-full">';
-                html += '<span class="manage-product-spec-label">成分:</span>';
-                html += '<span class="manage-product-spec-value-full">' + product.composition + '</span>';
-                html += '</div>';
-                
-                html += '<div class="manage-product-spec-full">';
-                html += '<span class="manage-product-spec-label">供应商:</span>';
-                html += '<span class="manage-product-spec-value-full">' + product.supplier + '</span>';
-                html += '</div>';
-
-                html += '</div>'; // end .manage-product-specs
-                
-                // --- 备注 ---
-                if (product.notes && product.notes !== '-') {
-                    html += '<div class="manage-product-notes">' + product.notes + '</div>';
-                }
-                
-                html += '</div>'; // end .manage-product-info
-
-                // --- Media Column ---
-                html += '<div class="manage-product-media">';
-                if (product.image) {
-                    html += '<img src="' + product.image + '" alt="底卡" class="manage-product-image" data-code="' + code + '">';
-                } else {
-                    // 占位符
-                    html += '<div class="manage-product-image" style="display:flex; align-items:center; justify-content:center; background:#eee; color:#aaa; font-size:0.8rem; text-align:center; box-sizing: border-box;"><span>无图片</span></div>';
-                }
-                html += '<div class="manage-product-actions">';
-                html += '<button class="btn-edit" onclick="editProduct(\'' + code + '\')">编辑</button>';
-                html += '<button class="btn-remove" onclick="deleteProductFromList(\'' + code + '\')">删除</button>';
-                html += '</div>';
-                html += '</div>'; // end .manage-product-media
-
-                html += '</div>'; // end .manage-product-card
-            });
-            list.innerHTML = html || '<div class="empty-state" style="padding: 2rem; background: white; border-radius: 12px; text-align: center;"><div class="empty-icon" style="font-size:3rem; color: #ccc;">📦</div><div class="empty-text" style="font-size:1.1rem;">暂无产品</div><div class="empty-subtext">通过上方表单添加或上传文件导入</div></div>';
+            list.innerHTML = html;
+            
+            // 显示/隐藏加载更多按钮
+            const loadMoreContainer = document.getElementById('loadMoreContainer');
+            if (hasMoreProducts) {
+                loadMoreContainer.style.display = 'block';
+            } else {
+                loadMoreContainer.style.display = 'none';
+            }
+            
             bindImageEvents();
         }
 
+        function loadMoreProducts() {
+            manageCurrentPage++;
+            renderManageProducts();
+        }
 
         function deleteProductFromList(code) {
-            // (原文件逻辑不变)
             if (confirm('确定删除产品 ' + code + '？')) {
                 delete catalogData[code];
                 saveData().then(() => {
@@ -1694,10 +2292,8 @@
             }
         }
 
-        // --- 数据上传与备份模块 (原sidebar功能) ---
-
+        // --- 数据上传与备份模块 ---
         function exportAllData() {
-            // (原文件逻辑不变)
             if (Object.keys(catalogData).length === 0) {
                 showStatus('无数据可导出', 'error', 'dataStatusMsg');
                 return;
@@ -1759,7 +2355,6 @@
         }
 
         function importDatabase(files) {
-            // (原文件逻辑不变)
             if (files.length === 0) return;
             var file = files[0];
            
@@ -1849,7 +2444,6 @@
         });
 
         function clearData() {
-            // (原文件逻辑不变)
             if (confirm('⚠️ 确定要清空所有数据吗？\n\n此操作将删除所有已上传的文件和产品数据，且无法恢复！')) {
                 catalogData = {};
                 uploadedFiles = [];
@@ -1881,7 +2475,6 @@
         }
 
         document.getElementById('fileInput').addEventListener('change', function(e) {
-            // (原文件逻辑不变)
             var files = Array.from(e.target.files);
             if (files.length === 0) return;
             showStatus('正在处理 ' + files.length + ' 个文件...', 'loading', 'dataStatusMsg');
@@ -1928,7 +2521,6 @@
         });
 
         function parseSpreadsheetData(rows) {
-            // (原文件逻辑不变)
             var products = {};
             rows.forEach(function(row) {
                 if (row[0] && row[0].match(/^[YC]*[ACDFGJMST]\d+/)) {
@@ -1942,7 +2534,7 @@
                         weight: row[5] || '-',
                         notes: row[6] || '-',
                         supplier: row[7] || '-',
-                        image: catalogData[code] ? catalogData[code].image : null // 导入时保留已有图片
+                        image: catalogData[code] ? catalogData[code].image : null
                     };
                 }
             });
@@ -1950,7 +2542,6 @@
         }
 
         function renderFilesList() {
-            // (原文件逻辑不变)
             var filesDiv = document.getElementById('filesList');
             if (uploadedFiles.length === 0) {
                 filesDiv.innerHTML = '<div class="empty-state" style="text-align: center; padding: 1rem;"><div class="empty-icon" style="font-size:2rem; color: #ccc;">📁</div><div class="empty-subtext">暂无文件记录</div></div>';
@@ -1963,42 +2554,78 @@
             filesDiv.innerHTML = html;
         }
         
-        // (保持 V4 的监听逻辑)
+        // 批量图片上传 - 使用纯产品代码命名
         document.getElementById('bulkImageInput').addEventListener('change', function(e) {
-            // (原文件逻辑不变)
             const files = Array.from(e.target.files);
             if (files.length === 0) return;
             showStatus(`处理 ${files.length} 张图片...`, 'loading', 'manageFormStatus');
+            
+            // 显示上传进度
+            document.getElementById('bulkImageUploadProgress').style.display = 'block';
+            document.getElementById('bulkImageUploadProgressFill').style.width = '0%';
+            
             let success = 0, fail = 0;
-            files.forEach(file => {
+            let processed = 0;
+            
+            files.forEach((file, index) => {
                 const name = file.name.toUpperCase();
-                const match = name.match(/^([A-Z0-9\-]+)\.(JPG|PNG|JPEG|GIF)$/i);
-                if (!match || file.size > 5 * 1024 * 1024) {
+                // 从文件名提取产品代码 (移除扩展名)
+                const code = name.replace(/\.(JPG|PNG|JPEG|GIF)$/i, '');
+                
+                if (!code || file.size > 5 * 1024 * 1024) {
                     fail++;
+                    processed++;
+                    updateBulkProgress(processed, files.length, success, fail);
                     return;
                 }
-                const code = match[1];
+                
                 if (!catalogData[code]) {
                     fail++;
+                    processed++;
+                    updateBulkProgress(processed, files.length, success, fail);
                     return;
                 }
-                const reader = new FileReader();
-                reader.onload = function(ev) {
-                    catalogData[code].image = ev.target.result;
+                
+                // 上传到Cloudflare R2，使用纯产品代码命名
+                uploadToR2(file, code).then(imageUrl => {
+                    catalogData[code].image = imageUrl;
                     success++;
-                    if (success + fail === files.length) {
+                    processed++;
+                    updateBulkProgress(processed, files.length, success, fail);
+                    
+                    if (processed === files.length) {
                         saveData().then(() => {
+                            document.getElementById('bulkImageUploadProgress').style.display = 'none';
                             showStatus(`批量上传完成：${success} 成功，${fail} 失败`, 'success', 'manageFormStatus');
                             renderManageProducts();
                             e.target.value = '';
                         });
                     }
-                };
-                reader.readAsDataURL(file);
+                }).catch(error => {
+                    console.error(`上传图片 ${code} 失败:`, error);
+                    fail++;
+                    processed++;
+                    updateBulkProgress(processed, files.length, success, fail);
+                    
+                    if (processed === files.length) {
+                        saveData().then(() => {
+                            document.getElementById('bulkImageUploadProgress').style.display = 'none';
+                            showStatus(`批量上传完成：${success} 成功，${fail} 失败`, 'success', 'manageFormStatus');
+                            renderManageProducts();
+                            e.target.value = '';
+                        });
+                    }
+                });
             });
         });
+        
+        function updateBulkProgress(processed, total, success, fail) {
+            const progress = Math.round(processed / total * 100);
+            document.getElementById('bulkImageUploadProgressFill').style.width = progress + '%';
+            showStatus(`批量上传进度: ${progress}% (成功: ${success}, 失败: ${fail})`, 'loading', 'manageFormStatus');
+        }
 
-        // --- PDF 导出 (原文件逻辑不变) ---
+        // --- PDF 导出 ---
         function exportQuotePDF() {
             var allResults = [];
             if (rangeResults.length > 0) {
@@ -2088,7 +2715,6 @@
             });
         }
 
-
         // ============== 全局事件监听 ==============
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' || e.key === 'Esc') {
@@ -2103,14 +2729,11 @@
             await loadData();
             renderHistory();
             updateStats();
-            renderManageProducts();
-            renderFilesList();
+            loadR2Config();
             bindImageEvents();
-            // 默认显示查询报价页
             switchTab('query');
         }
         initApp();
     </script>
 </body>
 </html>
-
