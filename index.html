@@ -1,0 +1,4820 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="宇东报价">
+    <title>宇东纺织报价系统</title>
+    
+    <!-- 引入必要的库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- AWS S3 SDK (兼容Cloudflare R2) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aws-sdk/2.1462.0/aws-sdk.min.js"></script>
+
+    <!-- PhotoSwipe 图片查看器 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/photoswipe/5.4.4/photoswipe.min.css">
+    
+    <style>
+        /* =========================================
+           🍎 iOS 设计系统 - 响应式优化版
+           ========================================= */
+        :root {
+            /* --- iOS 系统颜色 --- */
+            --ios-system-blue: #007AFF;
+            --ios-system-green: #34C759;
+            --ios-system-indigo: #5856D6;
+            --ios-system-orange: #FF9500;
+            --ios-system-pink: #FF2D55;
+            --ios-system-purple: #AF52DE;
+            --ios-system-red: #FF3B30;
+            --ios-system-teal: #5AC8FA;
+            --ios-system-yellow: #FFCC00;
+            
+            /* --- iOS 背景与表面 --- */
+            --ios-system-background: #FFFFFF;
+            --ios-system-background-secondary: #F2F2F7;
+            --ios-system-background-tertiary: #FFFFFF;
+            --ios-system-grouped-background: #F2F2F7;
+            --ios-system-grouped-background-secondary: #FFFFFF;
+            
+            /* --- iOS 标签与文本 --- */
+            --ios-label-primary: #000000;
+            --ios-label-secondary: #3C3C4399;
+            --ios-label-tertiary: #3C3C434D;
+            --ios-label-quaternary: #3C3C432E;
+            
+            /* --- iOS 分隔线 --- */
+            --ios-separator: #C6C6C8;
+            --ios-separator-opaque: #C6C6C8;
+            
+            /* --- 阴影系统 --- */
+            --ios-shadow-sm: 0 1px 3px rgba(0,0,0,0.12);
+            --ios-shadow-md: 0 4px 12px rgba(0,0,0,0.15);
+            --ios-shadow-lg: 0 10px 30px rgba(0,0,0,0.2);
+            
+            /* --- 圆角系统 --- */
+            --ios-radius-sm: 8px;
+            --ios-radius-md: 12px;
+            --ios-radius-lg: 16px;
+            --ios-radius-xl: 20px;
+            
+            /* --- 间距系统 --- */
+            --ios-spacing-xs: 8px;
+            --ios-spacing-sm: 12px;
+            --ios-spacing-md: 16px;
+            --ios-spacing-lg: 20px;
+            --ios-spacing-xl: 24px;
+            --ios-spacing-xxl: 32px;
+            
+            /* --- 安全区域 --- */
+            --ios-safe-area-top: env(safe-area-inset-top);
+            --ios-safe-area-bottom: env(safe-area-inset-bottom);
+        }
+
+        /* =========================================
+           基础重置与排版 - 响应式优化
+           ========================================= */
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        html {
+            height: 100%;
+            -webkit-text-size-adjust: 100%;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--ios-system-grouped-background);
+            color: var(--ios-label-primary);
+            line-height: 1.47059;
+            font-weight: 400;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            min-height: 100vh;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            /* iOS 滚动行为 */
+            -webkit-overflow-scrolling: touch;
+            overflow-scrolling: touch;
+        }
+
+        /* 响应式容器 */
+        .ios-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--ios-system-background);
+            min-height: 100vh;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        /* =========================================
+           桌面端适配 - 媒体查询
+           ========================================= */
+        @media (min-width: 768px) {
+            .ios-container {
+                max-width: 100%;
+                margin: 20px auto;
+                border-radius: 20px;
+                box-shadow: var(--ios-shadow-lg);
+                min-height: calc(100vh - 40px);
+                max-height: calc(100vh - 40px);
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            body {
+                padding: 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+            
+            /* 桌面端布局优化 - 修复滚动问题 */
+            .ios-content {
+                display: grid;
+                grid-template-columns: 1fr 300px;
+                gap: var(--ios-spacing-lg);
+                flex: 1;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            .ios-main-content {
+                overflow-y: auto;
+                padding-right: 10px;
+                height: 100%;
+            }
+            
+            .ios-tab-content {
+                height: auto;
+                min-height: 100%;
+            }
+            
+            /* 桌面端侧边栏 */
+            .ios-sidebar {
+                background: var(--ios-system-background-secondary);
+                border-radius: var(--ios-radius-lg);
+                padding: var(--ios-spacing-lg);
+                height: 100%;
+                overflow-y: auto;
+                display: block;
+            }
+            
+            /* 桌面端统计卡片优化 */
+            .ios-stats-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            /* 桌面端产品卡片优化 */
+            .ios-product-card {
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .ios-product-header {
+                flex-shrink: 0;
+            }
+            
+            .ios-product-details {
+                flex-grow: 1;
+            }
+            
+            /* 桌面端搜索优化 */
+            .ios-search-bar {
+                margin-bottom: var(--ios-spacing-lg);
+            }
+            
+            /* 桌面端按钮优化 */
+            .ios-button {
+                transition: all 0.2s ease;
+            }
+            
+            .ios-button:hover {
+                transform: translateY(-1px);
+                box-shadow: var(--ios-shadow-md);
+            }
+            
+            /* 桌面端模态框优化 */
+            .ios-modal-content {
+                max-width: 600px;
+            }
+        }
+
+        /* 大桌面端优化 */
+        @media (min-width: 1200px) {
+            .ios-container {
+                max-width: 1400px;
+            }
+            
+            .ios-content {
+                grid-template-columns: 1fr 350px;
+            }
+            
+            .ios-stats-grid {
+                grid-template-columns: repeat(6, 1fr);
+            }
+            
+            /* 大屏幕产品网格布局 */
+            .ios-product-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                gap: var(--ios-spacing-md);
+            }
+            
+            .ios-product-card {
+                margin-bottom: 0;
+            }
+        }
+
+        /* 平板端优化 */
+        @media (min-width: 768px) and (max-width: 1199px) {
+            .ios-container {
+                max-width: 900px;
+            }
+            
+            .ios-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .ios-sidebar {
+                display: none;
+            }
+            
+            .ios-stats-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* =========================================
+           重新设计顶部区域 - 移除状态栏后优化
+           ========================================= */
+        .ios-header {
+            padding: calc(var(--ios-safe-area-top) + var(--ios-spacing-md)) var(--ios-spacing-md) var(--ios-spacing-sm);
+            background: var(--ios-system-background);
+            border-bottom: 0.5px solid var(--ios-separator);
+        }
+
+        .ios-brand {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--ios-label-primary);
+            margin-bottom: var(--ios-spacing-xs);
+        }
+
+        .ios-brand-accent {
+            color: var(--ios-system-blue);
+        }
+
+        .ios-nav-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--ios-label-primary);
+        }
+
+        /* 桌面端头部优化 */
+        @media (min-width: 768px) {
+            .ios-header {
+                padding: var(--ios-spacing-lg) var(--ios-spacing-xl) var(--ios-spacing-md);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-shrink: 0;
+            }
+            
+            .ios-brand {
+                margin-bottom: 0;
+                font-size: 24px;
+            }
+            
+            .ios-nav-title {
+                font-size: 18px;
+            }
+        }
+
+        /* =========================================
+           2. iOS 内容区域 - 响应式优化
+           ========================================= */
+        .ios-content {
+            padding: var(--ios-spacing-md);
+            padding-bottom: calc(84px + var(--ios-safe-area-bottom));
+        }
+
+        .ios-tab-content {
+            display: none;
+        }
+
+        .ios-tab-content.active {
+            display: block;
+            animation: iosFadeIn 0.3s ease-out;
+        }
+
+        .ios-section {
+            margin-bottom: var(--ios-spacing-xl);
+        }
+
+        .ios-section-header {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ios-label-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--ios-spacing-sm);
+            padding: 0 var(--ios-spacing-md);
+        }
+
+        /* 桌面端内容区域优化 */
+        @media (min-width: 768px) {
+            .ios-content {
+                padding: var(--ios-spacing-xl);
+                padding-bottom: var(--ios-spacing-xl);
+                flex: 1;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            .ios-section {
+                margin-bottom: var(--ios-spacing-xxl);
+            }
+            
+            .ios-section-header {
+                font-size: 14px;
+                padding: 0;
+            }
+        }
+
+        /* =========================================
+           3. iOS 卡片设计 - 响应式优化版
+           ========================================= */
+        .ios-card {
+            background: var(--ios-system-background);
+            border-radius: var(--ios-radius-lg);
+            overflow: hidden;
+            margin-bottom: var(--ios-spacing-md);
+            box-shadow: var(--ios-shadow-sm);
+            border: 0.5px solid var(--ios-separator);
+            transition: all 0.3s ease;
+        }
+
+        .ios-card-header {
+            padding: var(--ios-spacing-md);
+            border-bottom: 0.5px solid var(--ios-separator);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .ios-card-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--ios-label-primary);
+        }
+
+        .ios-card-content {
+            padding: var(--ios-spacing-md);
+        }
+
+        .ios-card-footer {
+            padding: var(--ios-spacing-md);
+            border-top: 0.5px solid var(--ios-separator);
+            background: var(--ios-system-background-secondary);
+        }
+
+        /* 桌面端卡片优化 */
+        @media (min-width: 768px) {
+            .ios-card {
+                margin-bottom: var(--ios-spacing-lg);
+            }
+            
+            .ios-card:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--ios-shadow-md);
+            }
+        }
+
+        /* =========================================
+           4. iOS 按钮设计 - 响应式优化版
+           ========================================= */
+        .ios-button {
+            background: var(--ios-system-blue);
+            color: white;
+            border: none;
+            border-radius: var(--ios-radius-md);
+            padding: 10px 16px;
+            font-size: 15px;
+            font-weight: 600;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 36px;
+            transition: all 0.1s ease;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .ios-button:active {
+            opacity: 0.7;
+            transform: scale(0.98);
+        }
+
+        .ios-button-secondary {
+            background: var(--ios-system-background-secondary);
+            color: var(--ios-system-blue);
+            border: 1px solid var(--ios-system-blue);
+        }
+
+        .ios-button-destructive {
+            background: var(--ios-system-red);
+        }
+
+        .ios-button-full {
+            width: 100%;
+        }
+
+        .ios-button-small {
+            padding: 6px 10px;
+            font-size: 13px;
+            min-height: 32px;
+        }
+
+        .ios-button-compact {
+            padding: 4px 8px;
+            font-size: 12px;
+            min-height: 28px;
+        }
+
+        /* 新增：保存按钮状态样式 */
+        .ios-button-saving {
+            background-color: var(--ios-label-tertiary) !important;
+            pointer-events: none;
+        }
+
+        .ios-button-saving::after {
+            content: '';
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 8px;
+        }
+
+        /* 新增：离线模式按钮样式 */
+        .ios-button:disabled,
+        .ios-button.offline-disabled {
+            background-color: var(--ios-label-tertiary) !important;
+            color: var(--ios-label-quaternary) !important;
+            border-color: var(--ios-separator) !important;
+            pointer-events: none;
+            cursor: not-allowed;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 桌面端按钮优化 */
+        @media (min-width: 768px) {
+            .ios-button {
+                padding: 12px 20px;
+                font-size: 16px;
+                min-height: 40px;
+            }
+            
+            .ios-button-small {
+                padding: 8px 12px;
+                font-size: 14px;
+                min-height: 34px;
+            }
+            
+            .ios-button-compact {
+                padding: 6px 10px;
+                font-size: 13px;
+                min-height: 30px;
+            }
+            
+            .ios-button:hover {
+                transform: translateY(-1px);
+                box-shadow: var(--ios-shadow-md);
+            }
+        }
+
+        /* =========================================
+           5. iOS 表单元素 - 响应式优化
+           ========================================= */
+        .ios-input-group {
+            margin-bottom: var(--ios-spacing-lg);
+        }
+
+        .ios-input-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ios-label-secondary);
+            margin-bottom: var(--ios-spacing-xs);
+            display: block;
+        }
+
+        .ios-input {
+            width: 100%;
+            background: var(--ios-system-background);
+            border: 1px solid var(--ios-separator);
+            border-radius: var(--ios-radius-md);
+            padding: var(--ios-spacing-md);
+            font-size: 17px;
+            color: var(--ios-label-primary);
+            min-height: 44px;
+            -webkit-appearance: none;
+        }
+
+        .ios-input:focus {
+            outline: none;
+            border-color: var(--ios-system-blue);
+        }
+
+        .ios-textarea {
+            min-height: 100px;
+            resize: vertical;
+            font-family: inherit;
+            line-height: 1.4;
+        }
+
+        /* 桌面端表单优化 */
+        @media (min-width: 768px) {
+            .ios-input-group {
+                margin-bottom: var(--ios-spacing-xl);
+            }
+            
+            .ios-input-label {
+                font-size: 14px;
+            }
+            
+            .ios-input {
+                padding: var(--ios-spacing-lg);
+                font-size: 16px;
+                min-height: 48px;
+            }
+        }
+
+        /* =========================================
+           6. iOS 底部标签栏 - 响应式优化
+           ========================================= */
+        .ios-tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--ios-system-background);
+            border-top: 0.5px solid var(--ios-separator);
+            display: flex;
+            justify-content: space-around;
+            padding-bottom: var(--ios-safe-area-bottom);
+            height: 84px;
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .ios-tab-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 0;
+            color: var(--ios-label-tertiary);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .ios-tab-item.active {
+            color: var(--ios-system-blue);
+        }
+
+        .ios-tab-icon {
+            width: 28px;
+            height: 28px;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .ios-tab-icon svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .ios-tab-label {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .ios-tab-indicator {
+            position: absolute;
+            top: -4px;
+            width: 4px;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--ios-system-blue);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .ios-tab-item.active .ios-tab-indicator {
+            opacity: 1;
+        }
+
+        /* 桌面端导航优化 */
+        @media (min-width: 768px) {
+            .ios-tab-bar {
+                position: static;
+                height: auto;
+                padding: 0;
+                border-top: none;
+                border-bottom: 0.5px solid var(--ios-separator);
+                justify-content: flex-start;
+                padding: 0 var(--ios-spacing-xl);
+                flex-shrink: 0;
+            }
+            
+            .ios-tab-item {
+                flex: 0 0 auto;
+                flex-direction: row;
+                padding: var(--ios-spacing-md) var(--ios-spacing-lg);
+                margin-right: var(--ios-spacing-md);
+            }
+            
+            .ios-tab-icon {
+                margin-bottom: 0;
+                margin-right: var(--ios-spacing-sm);
+            }
+            
+            .ios-tab-label {
+                font-size: 16px;
+            }
+            
+            .ios-tab-indicator {
+                top: auto;
+                bottom: 0;
+                width: 100%;
+                height: 3px;
+                border-radius: 3px 3px 0 0;
+            }
+        }
+
+        /* =========================================
+           7. iOS 搜索栏 - 响应式优化
+           ========================================= */
+        .ios-search-bar {
+            position: relative;
+            background: var(--ios-system-background-secondary);
+            border-radius: var(--ios-radius-lg);
+            padding: var(--ios-spacing-sm) var(--ios-spacing-md);
+            margin-bottom: var(--ios-spacing-md);
+            display: flex;
+            align-items: center;
+        }
+
+        .ios-search-icon {
+            color: var(--ios-label-tertiary);
+            margin-right: var(--ios-spacing-sm);
+        }
+
+        .ios-search-input {
+            flex: 1;
+            background: none;
+            border: none;
+            font-size: 17px;
+            color: var(--ios-label-primary);
+            outline: none;
+            padding-right: 30px; /* 为重置按钮留出空间 */
+        }
+
+        .ios-search-input::placeholder {
+            color: var(--ios-label-tertiary);
+        }
+
+        /* 新增：搜索框重置按钮样式 */
+        .ios-search-reset {
+            position: absolute;
+            right: var(--ios-spacing-md);
+            background: var(--ios-label-tertiary);
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s ease, background-color 0.2s ease;
+            pointer-events: none;
+        }
+
+        .ios-search-reset.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .ios-search-reset:active {
+            background: var(--ios-label-secondary);
+        }
+
+        /* 桌面端搜索优化 */
+        @media (min-width: 768px) {
+            .ios-search-bar {
+                padding: var(--ios-spacing-md) var(--ios-spacing-lg);
+                margin-bottom: var(--ios-spacing-lg);
+            }
+            
+            .ios-search-input {
+                font-size: 16px;
+            }
+            
+            .ios-search-reset {
+                right: var(--ios-spacing-lg);
+                width: 22px;
+                height: 22px;
+                font-size: 16px;
+            }
+            
+            .ios-search-reset:hover {
+                background: var(--ios-label-secondary);
+            }
+        }
+
+        /* =========================================
+           8. iOS 产品卡片 - 响应式优化版
+           ========================================= */
+        .ios-product-card {
+            background: var(--ios-system-background);
+            border-radius: var(--ios-radius-lg);
+            padding: var(--ios-spacing-md);
+            margin-bottom: var(--ios-spacing-md);
+            box-shadow: var(--ios-shadow-sm);
+            border: 0.5px solid var(--ios-separator);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        /* 重新设计产品头部 - 图片在右上角 */
+        .ios-product-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--ios-spacing-md);
+        }
+
+        .ios-product-code-container {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+
+        .ios-product-code {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--ios-label-primary);
+            font-family: 'SF Mono', Menlo, monospace;
+        }
+
+        .ios-product-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: var(--ios-system-green);
+            margin-left: var(--ios-spacing-xs);
+        }
+
+        .ios-product-status.missing {
+            background: var(--ios-system-orange);
+        }
+
+        /* 右上角图片容器 */
+        .ios-product-image-container {
+            margin-left: var(--ios-spacing-sm);
+        }
+
+        .ios-product-image {
+            width: 60px;
+            height: 60px;
+            border-radius: var(--ios-radius-md);
+            background: var(--ios-system-background-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 0.5px solid var(--ios-separator);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .ios-product-image:hover {
+            transform: scale(1.05);
+        }
+
+        .ios-product-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* 重新设计产品详情布局 - 保持2列网格 */
+        .ios-product-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--ios-spacing-sm);
+            margin-bottom: var(--ios-spacing-md);
+        }
+
+        .ios-product-detail {
+            display: flex;
+            flex-direction: column;
+            padding: var(--ios-spacing-sm);
+            background: var(--ios-system-background-secondary);
+            border-radius: var(--ios-radius-md);
+        }
+
+        .ios-product-detail-label {
+            font-size: 11px;
+            color: var(--ios-label-tertiary);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .ios-product-detail-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ios-label-primary);
+        }
+
+        /* 码价和米价突出显示 */
+        .ios-product-detail:nth-child(1) .ios-product-detail-value,
+        .ios-product-detail:nth-child(2) .ios-product-detail-value {
+            color: var(--ios-system-blue);
+            font-weight: 700;
+        }
+
+        /* 备注信息样式 */
+        .ios-product-notes {
+            background: var(--ios-system-orange);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 8px 12px;
+            border-radius: var(--ios-radius-sm);
+            display: inline-block;
+            margin-top: var(--ios-spacing-sm);
+            width: 100%;
+            text-align: center;
+        }
+
+        /* 产品管理卡片中的编辑删除按钮优化 */
+        .ios-product-actions {
+            display: flex;
+            gap: var(--ios-spacing-sm);
+            margin-top: var(--ios-spacing-md);
+            justify-content: center;
+        }
+
+        .ios-product-actions .ios-button {
+            flex: 0 0 30%; /* 进一步缩小按钮宽度 */
+            min-width: 0;
+            padding: 6px 8px;
+            font-size: 12px;
+        }
+
+        /* 桌面端产品卡片优化 */
+        @media (min-width: 768px) {
+            .ios-product-card {
+                padding: var(--ios-spacing-lg);
+                margin-bottom: var(--ios-spacing-lg);
+            }
+            
+            .ios-product-code {
+                font-size: 20px;
+            }
+            
+            .ios-product-image {
+                width: 80px;
+                height: 80px;
+            }
+            
+            .ios-product-details {
+                grid-template-columns: repeat(3, 1fr);
+                gap: var(--ios-spacing-md);
+            }
+            
+            .ios-product-detail {
+                padding: var(--ios-spacing-md);
+            }
+            
+            .ios-product-detail-label {
+                font-size: 12px;
+            }
+            
+            .ios-product-detail-value {
+                font-size: 16px;
+            }
+            
+            .ios-product-actions .ios-button {
+                padding: 8px 12px;
+                font-size: 14px;
+            }
+        }
+
+        /* 大屏幕产品网格布局 */
+        @media (min-width: 1200px) {
+            .ios-product-card {
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+            }
+            
+            .ios-product-header {
+                flex-shrink: 0;
+            }
+            
+            .ios-product-details {
+                flex-grow: 1;
+            }
+            
+            .ios-product-actions {
+                flex-shrink: 0;
+            }
+        }
+
+        /* =========================================
+           9. iOS 模态框 - 响应式优化版
+           ========================================= */
+        .ios-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.4);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: var(--ios-spacing-md);
+        }
+
+        .ios-modal.active {
+            display: flex;
+        }
+
+        .ios-modal-content {
+            background: var(--ios-system-background);
+            border-radius: var(--ios-radius-xl);
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: var(--ios-shadow-lg);
+            transform: translateY(20px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .ios-modal.active .ios-modal-content {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .ios-modal-header {
+            padding: var(--ios-spacing-md);
+            border-bottom: 0.5px solid var(--ios-separator);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-height: 44px; /* 确保最小触摸区域 */
+        }
+
+        .ios-modal-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--ios-label-primary);
+        }
+
+        .ios-modal-body {
+            padding: var(--ios-spacing-md);
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        /* 新增：模态框按钮优化 */
+        .ios-modal-header .ios-nav-button {
+            background: transparent;
+            border: none;
+            color: var(--ios-system-blue);
+            font-size: 17px;
+            font-weight: 600;
+            padding: 10px 16px;
+            border-radius: var(--ios-radius-md);
+            min-height: 36px;
+            min-width: 60px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ios-modal-header .ios-nav-button:active {
+            background-color: rgba(0, 122, 255, 0.1);
+        }
+
+        /* 桌面端模态框优化 */
+        @media (min-width: 768px) {
+            .ios-modal-content {
+                max-width: 600px;
+            }
+            
+            .ios-modal-header {
+                padding: var(--ios-spacing-lg);
+            }
+            
+            .ios-modal-title {
+                font-size: 20px;
+            }
+            
+            .ios-modal-body {
+                padding: var(--ios-spacing-lg);
+            }
+            
+            .ios-modal-header .ios-nav-button {
+                font-size: 18px;
+                padding: 12px 20px;
+                min-height: 40px;
+                min-width: 70px;
+            }
+            
+            .ios-modal-header .ios-nav-button:hover {
+                background-color: rgba(0, 122, 255, 0.05);
+            }
+        }
+
+        /* =========================================
+           10. iOS 统计卡片 - 响应式优化
+           ========================================= */
+        .ios-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--ios-spacing-md);
+        }
+
+        .ios-stat-item {
+            text-align: center;
+            padding: var(--ios-spacing-md);
+            background: var(--ios-system-background);
+            border-radius: var(--ios-radius-lg);
+            box-shadow: var(--ios-shadow-sm);
+            border: 0.5px solid var(--ios-separator);
+            transition: all 0.3s ease;
+        }
+
+        .ios-stat-value {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: var(--ios-spacing-xs);
+            line-height: 1.2;
+            white-space: nowrap; /* 防止文字换行 */
+        }
+
+        .ios-stat-label {
+            font-size: 13px;
+            color: var(--ios-label-secondary);
+        }
+
+        /* 缓存大小单位特殊样式 - 修复电脑端换行问题 */
+        .cache-size-unit {
+            font-size: 14px;
+            color: var(--ios-system-blue);
+            font-weight: 600;
+            display: inline-block;
+            line-height: 1;
+            vertical-align: baseline;
+        }
+
+        /* 桌面端统计卡片优化 */
+        @media (min-width: 768px) {
+            .ios-stats-grid {
+                gap: var(--ios-spacing-lg);
+            }
+            
+            .ios-stat-item {
+                padding: var(--ios-spacing-lg);
+            }
+            
+            .ios-stat-value {
+                font-size: 24px;
+            }
+            
+            .ios-stat-label {
+                font-size: 14px;
+            }
+            
+            .ios-stat-item:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--ios-shadow-md);
+            }
+            
+            /* 桌面端缓存大小单位 - 修复换行问题 */
+            .cache-size-unit {
+                font-size: 16px;
+                line-height: 1;
+                vertical-align: baseline;
+            }
+        }
+
+        /* 大桌面端统计卡片优化 */
+        @media (min-width: 1200px) {
+            .ios-stats-grid {
+                grid-template-columns: repeat(6, 1fr);
+            }
+            
+            .ios-stat-item {
+                padding: var(--ios-spacing-md);
+            }
+            
+            .ios-stat-value {
+                font-size: 20px;
+            }
+            
+            /* 大桌面端缓存大小单位优化 */
+            .cache-size-unit {
+                font-size: 14px;
+            }
+        }
+
+        /* =========================================
+           11. iOS 状态消息 - 响应式优化
+           ========================================= */
+        .ios-toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: var(--ios-spacing-md) var(--ios-spacing-lg);
+            border-radius: var(--ios-radius-lg);
+            font-size: 16px;
+            font-weight: 600;
+            z-index: 3000;
+            display: none;
+            text-align: center;
+            max-width: 280px;
+            box-shadow: var(--ios-shadow-lg);
+        }
+
+        .ios-toast.show {
+            display: block;
+            animation: toastFadeIn 0.3s ease-out;
+        }
+
+        @keyframes toastFadeIn {
+            from { opacity: 0; transform: translate(-50%, -40%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+        }
+
+        /* 新增：离线状态提示条 */
+        .ios-offline-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--ios-system-orange);
+            color: white;
+            padding: var(--ios-spacing-sm) var(--ios-spacing-md);
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            z-index: 1500;
+            display: none;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .ios-offline-bar.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(0); }
+        }
+
+        /* 桌面端Toast优化 */
+        @media (min-width: 768px) {
+            .ios-toast {
+                max-width: 350px;
+                font-size: 17px;
+                padding: var(--ios-spacing-lg) var(--ios-spacing-xl);
+            }
+            
+            .ios-offline-bar {
+                padding: var(--ios-spacing-md) var(--ios-spacing-lg);
+                font-size: 16px;
+            }
+        }
+
+        /* =========================================
+           12. iOS 列表设计 - 响应式优化
+           ========================================= */
+        .ios-list {
+            background: var(--ios-system-background);
+            border-radius: var(--ios-radius-lg);
+            overflow: hidden;
+            box-shadow: var(--ios-shadow-sm);
+            border: 0.5px solid var(--ios-separator);
+        }
+
+        .ios-list-item {
+            display: flex;
+            align-items: center;
+            padding: var(--ios-spacing-md);
+            min-height: 44px;
+            border-bottom: 0.5px solid var(--ios-separator);
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .ios-list-item:last-child {
+            border-bottom: none;
+        }
+
+        .ios-list-item:active {
+            background-color: var(--ios-system-background-secondary);
+        }
+
+        .ios-list-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--ios-radius-md);
+            background: var(--ios-system-background-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: var(--ios-spacing-md);
+            flex-shrink: 0;
+        }
+
+        .ios-list-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .ios-list-title {
+            font-size: 17px;
+            font-weight: 400;
+            color: var(--ios-label-primary);
+            margin-bottom: 2px;
+        }
+
+        .ios-list-subtitle {
+            font-size: 13px;
+            font-weight: 400;
+            color: var(--ios-label-secondary);
+        }
+
+        /* 桌面端列表优化 */
+        @media (min-width: 768px) {
+            .ios-list-item {
+                padding: var(--ios-spacing-lg);
+                min-height: 50px;
+            }
+            
+            .ios-list-icon {
+                width: 36px;
+                height: 36px;
+            }
+            
+            .ios-list-title {
+                font-size: 18px;
+            }
+            
+            .ios-list-subtitle {
+                fontSize: 14px;
+            }
+            
+            .ios-list-item:hover {
+                background-color: var(--ios-system-background-secondary);
+            }
+        }
+
+        /* =========================================
+           13. 设置页面优化 - 云存储配置
+           ========================================= */
+        .ios-settings-section {
+            background: var(--ios-system-background);
+            border-radius: var(--ios-radius-lg);
+            padding: var(--ios-spacing-md);
+            margin-bottom: var(--ios-spacing-md);
+            box-shadow: var(--ios-shadow-sm);
+            border: 0.5px solid var(--ios-separator);
+        }
+
+        .ios-settings-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--ios-label-primary);
+            margin-bottom: var(--ios-spacing-md);
+        }
+
+        .ios-settings-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: var(--ios-spacing-md);
+        }
+
+        .ios-settings-row {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: var(--ios-spacing-sm);
+        }
+
+        .ios-settings-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--ios-spacing-sm);
+            margin-top: var(--ios-spacing-md);
+        }
+
+        /* 桌面端设置优化 */
+        @media (min-width: 768px) {
+            .ios-settings-section {
+                padding: var(--ios-spacing-lg);
+                margin-bottom: var(--ios-spacing-lg);
+            }
+            
+            .ios-settings-title {
+                font-size: 20px;
+                margin-bottom: var(--ios-spacing-lg);
+            }
+            
+            .ios-settings-grid {
+                gap: var(--ios-spacing-lg);
+            }
+            
+            .ios-settings-row {
+                grid-template-columns: 1fr 1fr;
+                gap: var(--ios-spacing-md);
+            }
+            
+            .ios-settings-actions {
+                grid-template-columns: repeat(4, 1fr);
+                gap: var(--ios-spacing-md);
+            }
+        }
+
+        /* =========================================
+           响应式调整 - 移动端优化
+           ========================================= */
+        @media (max-width: 375px) {
+            .ios-container {
+                max-width: 100%;
+            }
+            
+            .ios-content {
+                padding: var(--ios-spacing-sm);
+                padding-bottom: calc(84px + var(--ios-safe-area-bottom));
+            }
+            
+            .ios-product-details {
+                grid-template-columns: 1fr;
+            }
+            
+            .ios-stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .ios-settings-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            /* 小屏幕调整图片尺寸 */
+            .ios-product-image {
+                width: 50px;
+                height: 50px;
+            }
+        }
+
+        /* =========================================
+           工具类
+           ========================================= */
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .mb-sm { margin-bottom: var(--ios-spacing-sm); }
+        .mb-md { margin-bottom: var(--ios-spacing-md); }
+        .mb-lg { margin-bottom: var(--ios-spacing-lg); }
+        .mt-sm { margin-top: var(--ios-spacing-sm); }
+        .mt-md { margin-top: var(--ios-spacing-md); }
+        .mt-lg { margin-top: var(--ios-spacing-lg); }
+        .flex { display: flex; }
+        .flex-1 { flex: 1; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .hidden { display: none; }
+
+        /* =========================================
+           动画
+           ========================================= */
+        @keyframes iosFadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .ios-fade-in {
+            animation: iosFadeIn 0.3s ease-out;
+        }
+
+        /* =========================================
+           侧边栏样式
+           ========================================= */
+        .ios-sidebar {
+            display: none; /* 默认在手机端隐藏侧边栏 */
+        }
+
+        .ios-sidebar-section {
+            margin-bottom: var(--ios-spacing-xl);
+        }
+
+        .ios-sidebar-section-header {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ios-label-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--ios-spacing-sm);
+        }
+
+        /* 桌面端侧边栏优化 */
+        @media (min-width: 768px) {
+            .ios-sidebar {
+                display: block; /* 在桌面端显示侧边栏 */
+            }
+            
+            .ios-sidebar-section {
+                margin-bottom: var(--ios-spacing-xxl);
+            }
+            
+            .ios-sidebar-section-header {
+                font-size: 14px;
+            }
+        }
+
+        /* =========================================
+           新增：产品代码汇总卡片样式
+           ========================================= */
+        .ios-code-summary-card {
+            background: var(--ios-system-background);
+            border-radius: var(--ios-radius-lg);
+            padding: var(--ios-spacing-md);
+            margin-bottom: var(--ios-spacing-md);
+            box-shadow: var(--ios-shadow-sm);
+            border: 0.5px solid var(--ios-separator);
+        }
+
+        .ios-code-summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--ios-spacing-md);
+        }
+
+        .ios-code-summary-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--ios-label-primary);
+        }
+
+        .ios-code-summary-count {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--ios-system-blue);
+        }
+
+        .ios-code-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: var(--ios-spacing-sm);
+        }
+
+        .ios-code-item {
+            background: var(--ios-system-background-secondary);
+            border-radius: var(--ios-radius-md);
+            padding: var(--ios-spacing-sm);
+            text-align: center;
+            font-family: 'SF Mono', Menlo, monospace;
+            font-weight: 600;
+            color: var(--ios-label-primary);
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .ios-code-item:hover {
+            background: var(--ios-system-blue);
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: var(--ios-shadow-sm);
+        }
+
+        .ios-code-item:active {
+            transform: scale(0.98);
+        }
+
+        /* 桌面端代码汇总卡片优化 */
+        @media (min-width: 768px) {
+            .ios-code-summary-card {
+                padding: var(--ios-spacing-lg);
+                margin-bottom: var(--ios-spacing-lg);
+            }
+            
+            .ios-code-summary-title {
+                font-size: 20px;
+            }
+            
+            .ios-code-summary-count {
+                font-size: 18px;
+            }
+            
+            .ios-code-summary-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: var(--ios-spacing-md);
+            }
+            
+            .ios-code-item {
+                padding: var(--ios-spacing-md);
+                font-size: 16px;
+            }
+        }
+        
+        /* =========================================
+           新增：缓存状态指示器
+           ========================================= */
+        .ios-cache-indicator {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--ios-system-green);
+            border: 1px solid white;
+            z-index: 1;
+        }
+        
+        .ios-cache-indicator.offline {
+            background: var(--ios-system-orange);
+        }
+        
+        .ios-cache-indicator.missing {
+            background: var(--ios-system-red);
+        }
+        
+        /* =========================================
+           新增：后台缓存状态指示器
+           ========================================= */
+        .ios-cache-status {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            background: var(--ios-system-blue);
+            color: white;
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: var(--ios-shadow-md);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            opacity: 0.9;
+        }
+        
+        .ios-cache-status.hidden {
+            transform: translateY(20px);
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .ios-cache-status .cache-spinner {
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- 离线状态提示条 -->
+    <div class="ios-offline-bar" id="offlineBar">
+        📶 当前处于离线模式，使用缓存数据（只读）
+    </div>
+
+    <!-- 后台缓存状态指示器 -->
+    <div class="ios-cache-status hidden" id="cacheStatus">
+        <div class="cache-spinner"></div>
+        <span id="cacheStatusText">后台缓存中...</span>
+    </div>
+
+    <!-- iOS 容器 -->
+    <div class="ios-container">
+        <!-- 重新设计的顶部区域 - 移除状态栏后优化 -->
+        <div class="ios-header">
+            <div class="ios-brand"><span class="ios-brand-accent">YUDONG</span> TEXTILE</div>
+            <div class="ios-nav-title" id="navTitle">报价工作台</div>
+        </div>
+
+        <!-- 内容区域 -->
+        <div class="ios-content">
+            <!-- 主内容区域 -->
+            <div class="ios-main-content">
+                <!-- 查询页面 -->
+                <div class="ios-tab-content active" id="tabQuery">
+                    <!-- 搜索栏 -->
+                    <div class="ios-search-bar">
+                        <div class="ios-search-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                        </div>
+                        <textarea class="ios-search-input ios-textarea" id="searchInput" placeholder="输入产品代码、供应商或价格/克重区间..." rows="3"></textarea>
+                        <button class="ios-search-reset" id="searchReset" onclick="resetSearch()">×</button>
+                    </div>
+
+                    <!-- 统计卡片 -->
+                    <div class="ios-section">
+                        <div class="ios-section-header">系统概览</div>
+                        <div class="ios-stats-grid">
+                            <div class="ios-stat-item">
+                                <div class="ios-stat-value" id="dataCount">0</div>
+                                <div class="ios-stat-label">产品总数</div>
+                            </div>
+                            <div class="ios-stat-item">
+                                <div class="ios-stat-value" id="r2ImageCount">0</div>
+                                <div class="ios-stat-label">云端图片</div>
+                            </div>
+                            <div class="ios-stat-item">
+                                <div class="ios-stat-value" id="missingImageCount">0</div>
+                                <div class="ios-stat-label">缺失图片</div>
+                            </div>
+                            <div class="ios-stat-item">
+                                <div class="ios-stat-value" id="cachedImageCount">0</div>
+                                <div class="ios-stat-label">缓存图片</div>
+                            </div>
+                            <div class="ios-stat-item">
+                                <div class="ios-stat-value" id="cacheSize">0 <span class="cache-size-unit">MB</span></div>
+                                <div class="ios-stat-label">缓存大小</div>
+                            </div>
+                            <div class="ios-stat-item">
+                                <div class="ios-stat-value" id="networkStatus">在线</div>
+                                <div class="ios-stat-label">网络状态</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 搜索结果 -->
+                    <div class="ios-section" id="resultsSection" style="display: none;">
+                        <div class="ios-section-header">搜索结果</div>
+                        
+                        <!-- 产品代码汇总卡片 -->
+                        <div id="codeSummaryCard" class="ios-code-summary-card" style="display: none;">
+                            <div class="ios-code-summary-header">
+                                <div class="ios-code-summary-title">匹配产品代码</div>
+                                <div class="ios-code-summary-count" id="codeSummaryCount">0 个</div>
+                            </div>
+                            <div class="ios-code-summary-grid" id="codeSummaryGrid"></div>
+                        </div>
+                        
+                        <div id="resultsArea"></div>
+                    </div>
+
+                    <!-- 历史记录 -->
+                    <div class="ios-section">
+                        <div class="ios-section-header">最近搜索</div>
+                        <div class="ios-card">
+                            <div class="ios-card-content">
+                                <div id="searchHistory" style="display: flex; flex-wrap: wrap; gap: var(--ios-spacing-sm);"></div>
+                            </div>
+                            <div class="ios-card-footer">
+                                <button class="ios-button ios-button-secondary ios-button-full ios-button-small" onclick="clearSearchHistory()">
+                                    清除搜索历史
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PDF导出按钮 -->
+                    <div class="ios-section" id="pdfExportSection" style="display: none;">
+                        <button class="ios-button ios-button-full" onclick="exportQuotePDF()">
+                            📄 导出报价PDF
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 管理页面 -->
+                <div class="ios-tab-content" id="tabManage">
+                    <div class="ios-section">
+                        <div class="ios-section-header">快速操作</div>
+                        <div class="ios-card">
+                            <div class="ios-card-content">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--ios-spacing-md);">
+                                    <button class="ios-button ios-button-secondary ios-button-compact" id="addProductBtn" onclick="showAddProductModal()">
+                                        <div style="text-align: center;">
+                                            <div style="font-size: 20px; margin-bottom: 4px;">➕</div>
+                                            <div style="font-size: 12px;">添加产品</div>
+                                        </div>
+                                    </button>
+                                    <button class="ios-button ios-button-secondary ios-button-compact" id="bulkUploadBtn" onclick="document.getElementById('bulkImageInput').click()">
+                                        <div style="text-align: center;">
+                                            <div style="font-size: 20px; margin-bottom: 4px;">📸</div>
+                                            <div style="font-size: 12px;">批量上传</div>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ios-section">
+                        <div class="ios-section-header">产品列表</div>
+                        
+                        <!-- 搜索框 -->
+                        <div class="ios-search-bar mb-md">
+                            <div class="ios-search-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <path d="m21 21-4.35-4.35"></path>
+                                </svg>
+                            </div>
+                            <input type="text" class="ios-search-input" id="manageSearchInput" placeholder="搜索产品..." oninput="filterManageProducts()">
+                            <button class="ios-search-reset" id="manageSearchReset" onclick="resetManageSearch()">×</button>
+                        </div>
+
+                        <!-- 产品列表 -->
+                        <div id="manageProductList"></div>
+                        
+                        <!-- 加载更多 -->
+                        <div class="text-center mt-md" id="loadMoreContainer" style="display: none;">
+                            <button class="ios-button ios-button-secondary ios-button-small" onclick="loadMoreProducts()">加载更多产品</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 设置页面 -->
+                <div class="ios-tab-content" id="tabData">
+                    <!-- 云存储配置 - 优化布局 -->
+                    <div class="ios-section">
+                        <div class="ios-section-header">云存储配置</div>
+                        <div class="ios-settings-section">
+                            <div class="ios-settings-title">Cloudflare R2 配置</div>
+                            <div class="ios-settings-grid">
+                                <div class="ios-settings-row">
+                                    <div class="ios-input-group">
+                                        <label class="ios-input-label">Account ID</label>
+                                        <input type="text" class="ios-input" id="r2AccountId" placeholder="Cloudflare Account ID">
+                                    </div>
+                                    <div class="ios-input-group">
+                                        <label class="ios-input-label">Bucket 名称</label>
+                                        <input type="text" class="ios-input" id="r2Bucket" placeholder="存储桶名称">
+                                    </div>
+                                </div>
+                                <div class="ios-settings-row">
+                                    <div class="ios-input-group">
+                                        <label class="ios-input-label">Access Key</label>
+                                        <input type="text" class="ios-input" id="r2AccessKey" placeholder="R2 Access Key">
+                                    </div>
+                                    <div class="ios-input-group">
+                                        <label class="ios-input-label">Secret Key</label>
+                                        <input type="password" class="ios-input" id="r2SecretKey" placeholder="R2 Secret Key">
+                                    </div>
+                                </div>
+                                <div class="ios-input-group">
+                                    <label class="ios-input-label">自定义域名</label>
+                                    <input type="text" class="ios-input" id="r2CustomDomain" placeholder="https://img.yudong-textile.top" value="https://img.yudong-textile.top">
+                                </div>
+                                <div class="ios-settings-actions">
+                                    <button class="ios-button ios-button-secondary" onclick="testR2Connection()">测试连接</button>
+                                    <button class="ios-button" onclick="saveR2Config()">保存配置</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 缓存管理 -->
+                    <div class="ios-section">
+                        <div class="ios-section-header">缓存管理</div>
+                        <div class="ios-list">
+                            <div class="ios-list-item" onclick="clearImageCache()">
+                                <div class="ios-list-icon">🗑️</div>
+                                <div class="ios-list-content">
+                                    <div class="ios-list-title">清空图片缓存</div>
+                                    <div class="ios-list-subtitle">删除所有缓存的图片数据</div>
+                                </div>
+                            </div>
+                            <div class="ios-list-item" onclick="checkCacheStatus()">
+                                <div class="ios-list-icon">📊</div>
+                                <div class="ios-list-content">
+                                    <div class="ios-list-title">缓存状态检查</div>
+                                    <div class="ios-list-subtitle">查看当前缓存状态和统计信息</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ios-section">
+                        <div class="ios-section-header">数据管理</div>
+                        <div class="ios-list">
+                            <div class="ios-list-item" onclick="document.getElementById('localDbInput').click()">
+                                <div class="ios-list-icon">📂</div>
+                                <div class="ios-list-content">
+                                    <div class="ios-list-title">本地数据导入</div>
+                                    <div class="ios-list-subtitle">从JSON或ZIP文件导入</div>
+                                </div>
+                            </div>
+                            <div class="ios-list-item" onclick="loadR2BackupFiles()">
+                                <div class="ios-list-icon">☁️</div>
+                                <div class="ios-list-content">
+                                    <div class="ios-list-title">Cloudflare R2导入</div>
+                                    <div class="ios-list-subtitle">从云端备份恢复</div>
+                                </div>
+                            </div>
+                            <div class="ios-list-item" onclick="exportAndUploadBackup()">
+                                <div class="ios-list-icon">💾</div>
+                                <div class="ios-list-content">
+                                    <div class="ios-list-title">导出完整备份</div>
+                                    <div class="ios-list-subtitle">包含数据和图片的ZIP文件</div>
+                                </div>
+                            </div>
+                            <div class="ios-list-item" onclick="clearData()" style="color: var(--ios-system-red);">
+                                <div class="ios-list-icon">⚠️</div>
+                                <div class="ios-list-content">
+                                    <div class="ios-list-title">清空所有数据</div>
+                                    <div class="ios-list-subtitle">永久删除所有产品和图片</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- R2备份文件列表 -->
+                    <div class="ios-section" id="r2BackupSection" style="display: none;">
+                        <div class="ios-section-header">云端备份文件</div>
+                        <div class="ios-card">
+                            <div class="ios-card-content">
+                                <div id="r2BackupList"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 侧边栏 - 桌面端显示 -->
+            <div class="ios-sidebar">
+                <div class="ios-sidebar-section">
+                    <div class="ios-sidebar-section-header">快速操作</div>
+                    <div class="ios-card">
+                        <div class="ios-card-content">
+                            <button class="ios-button ios-button-full mb-sm" id="sidebarAddProductBtn" onclick="showAddProductModal()">
+                                ➕ 添加新产品
+                            </button>
+                            <button class="ios-button ios-button-secondary ios-button-full mb-sm" id="sidebarBulkUploadBtn" onclick="document.getElementById('bulkImageInput').click()">
+                                📸 批量上传图片
+                            </button>
+                            <button class="ios-button ios-button-secondary ios-button-full" onclick="exportAndUploadBackup()">
+                                💾 导出完整备份
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ios-sidebar-section">
+                    <div class="ios-sidebar-section-header">系统状态</div>
+                    <div class="ios-card">
+                        <div class="ios-card-content">
+                            <div class="ios-stat-item" style="border: none; box-shadow: none; padding: 0; margin-bottom: var(--ios-spacing-md);">
+                                <div class="ios-stat-value" id="sidebarDataCount">0</div>
+                                <div class="ios-stat-label">产品总数</div>
+                            </div>
+                            <div class="ios-stat-item" style="border: none; box-shadow: none; padding: 0; margin-bottom: var(--ios-spacing-md);">
+                                <div class="ios-stat-value" id="sidebarR2ImageCount">0</div>
+                                <div class="ios-stat-label">云端图片</div>
+                            </div>
+                            <div class="ios-stat-item" style="border: none; box-shadow: none; padding: 0; margin-bottom: var(--ios-spacing-md);">
+                                <div class="ios-stat-value" id="sidebarCachedImageCount">0</div>
+                                <div class="ios-stat-label">缓存图片</div>
+                            </div>
+                            <div class="ios-stat-item" style="border: none; box-shadow: none; padding: 0;">
+                                <div class="ios-stat-value" id="sidebarNetworkStatus">在线</div>
+                                <div class="ios-stat-label">网络状态</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ios-sidebar-section">
+                    <div class="ios-sidebar-section-header">最近搜索</div>
+                    <div class="ios-card">
+                        <div class="ios-card-content">
+                            <div id="sidebarSearchHistory"></div>
+                        </div>
+                        <div class="ios-card-footer">
+                            <button class="ios-button ios-button-secondary ios-button-full ios-button-small" onclick="clearSearchHistory()">
+                                清除搜索历史
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部标签栏 -->
+        <div class="ios-tab-bar">
+            <div class="ios-tab-item active" data-tab="query">
+                <div class="ios-tab-indicator"></div>
+                <div class="ios-tab-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                </div>
+                <div class="ios-tab-label">查询</div>
+            </div>
+            <div class="ios-tab-item" data-tab="manage">
+                <div class="ios-tab-indicator"></div>
+                <div class="ios-tab-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                        <path d="M3 9h18"></path>
+                        <path d="M9 21V9"></path>
+                    </svg>
+                </div>
+                <div class="ios-tab-label">管理</div>
+            </div>
+            <div class="ios-tab-item" data-tab="data">
+                <div class="ios-tab-indicator"></div>
+                <div class="ios-tab-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                </div>
+                <div class="ios-tab-label">设置</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加产品模态框 -->
+    <div class="ios-modal" id="addProductModal">
+        <div class="ios-modal-content">
+            <div class="ios-modal-header">
+                <button class="ios-nav-button" onclick="hideAddProductModal()">取消</button>
+                <div class="ios-modal-title">添加产品</div>
+                <button class="ios-nav-button" id="saveProductBtn" onclick="addOrUpdateProduct()">保存</button>
+            </div>
+            <div class="ios-modal-body">
+                <div class="ios-input-group">
+                    <label class="ios-input-label">产品代码</label>
+                    <input type="text" class="ios-input" id="codeInput" placeholder="例如：C6001">
+                </div>
+                <div class="ios-input-group">
+                    <label class="ios-input-label">供应商</label>
+                    <input type="text" class="ios-input" id="supplierInput" placeholder="供应商名称">
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--ios-spacing-md);">
+                    <div class="ios-input-group">
+                        <label class="ios-input-label">码价</label>
+                        <input type="text" class="ios-input" id="priceInput" placeholder="0.00">
+                    </div>
+                    <div class="ios-input-group">
+                        <label class="ios-input-label">米价</label>
+                        <input type="text" class="ios-input" id="priceAltInput" placeholder="0.00">
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--ios-spacing-md);">
+                    <div class="ios-input-group">
+                        <label class="ios-input-label">门幅</label>
+                        <input type="text" class="ios-input" id="widthInput" placeholder="150cm">
+                    </div>
+                    <div class="ios-input-group">
+                        <label class="ios-input-label">克重</label>
+                        <input type="text" class="ios-input" id="weightInput" placeholder="90g">
+                    </div>
+                </div>
+                
+                <div class="ios-input-group">
+                    <label class="ios-input-label">成分</label>
+                    <input type="text" class="ios-input" id="compositionInput" placeholder="100%锦纶">
+                </div>
+                
+                <div class="ios-input-group">
+                    <label class="ios-input-label">备注</label>
+                    <input type="text" class="ios-input" id="notesInput" placeholder="选填信息">
+                </div>
+                
+                <div class="ios-input-group">
+                    <label class="ios-input-label">产品图片</label>
+                    <input type="file" class="ios-input" id="imageInput" accept="image/*">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast提示 -->
+    <div class="ios-toast" id="toast"></div>
+
+    <!-- 隐藏的文件输入 -->
+    <input type="file" id="localDbInput" accept=".json,.zip" style="display: none;">
+    <input type="file" id="bulkImageInput" multiple accept="image/*" style="display: none;">
+
+    <!-- PhotoSwipe JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/photoswipe/5.4.4/umd/photoswipe.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/photoswipe/5.4.4/umd/photoswipe-lightbox.umd.min.js"></script>
+    
+    <script>
+        // ============== 全局变量和初始化 ==============
+        let catalogData = {};
+        let uploadedFiles = [];
+        let searchResults = [];
+        let fuzzyMatches = [];
+        let rangeResults = [];
+        let searchTimeout;
+        let searchHistory = [];
+        let editingCode = null;
+        let manageSearchTerm = '';
+        
+        // Cloudflare R2配置
+        let r2Config = JSON.parse(localStorage.getItem('r2-config') || '{}');
+        let s3Client = null;
+        
+        // 产品管理分页变量
+        let manageCurrentPage = 1;
+        let managePageSize = window.innerWidth <= 600 ? 10 : 20;
+        let filteredManageProducts = [];
+        let hasMoreProducts = false;
+
+        // PhotoSwipe实例
+        let photoSwipeLightbox = null;
+
+        // ============== 新增：离线缓存功能 ==============
+        let isOnline = true;
+        let isReadOnlyMode = false;
+        const CACHE_KEY = 'yudong-fabric-cache';
+        const CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24小时缓存有效期
+
+        // IndexedDB图片缓存
+        const IMAGE_DB_NAME = 'YudongImageCache';
+        const IMAGE_DB_VERSION = 1;
+        const IMAGE_STORE_NAME = 'images';
+        let imageDB = null;
+        let isImageDBSupported = 'indexedDB' in window;
+
+        // ============== 新增：后台自动缓存系统 ==============
+        let backgroundCacheManager = {
+            isRunning: false,
+            queue: [],
+            processed: 0,
+            total: 0,
+            concurrency: 3, // 同时下载的图片数量
+            activeDownloads: 0,
+            userActivity: false,
+            lastActivityTime: Date.now(),
+            cacheProgress: localStorage.getItem('background-cache-progress') || '{}',
+            
+            // 初始化后台缓存
+            init() {
+                // 加载缓存进度
+                try {
+                    this.cacheProgress = JSON.parse(localStorage.getItem('background-cache-progress') || '{}');
+                } catch (e) {
+                    this.cacheProgress = {};
+                }
+                
+                // 监听用户活动
+                this.setupActivityListeners();
+                
+                // 启动后台缓存（延迟启动，让UI先加载）
+                setTimeout(() => {
+                    this.start();
+                }, 3000);
+            },
+            
+            // 设置用户活动监听
+            setupActivityListeners() {
+                const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+                activityEvents.forEach(event => {
+                    document.addEventListener(event, () => {
+                        this.userActivity = true;
+                        this.lastActivityTime = Date.now();
+                        
+                        // 用户活动时降低缓存优先级
+                        if (this.isRunning && this.activeDownloads > 1) {
+                            this.concurrency = Math.max(1, this.concurrency - 1);
+                        }
+                    }, { passive: true });
+                });
+                
+                // 定期检查用户活动状态
+                setInterval(() => {
+                    const inactiveTime = Date.now() - this.lastActivityTime;
+                    if (inactiveTime > 10000) { // 10秒无活动
+                        this.userActivity = false;
+                        // 恢复正常的并发数
+                        this.concurrency = 3;
+                    }
+                }, 5000);
+            },
+            
+            // 开始后台缓存
+            async start() {
+                if (this.isRunning || !isOnline || isReadOnlyMode) {
+                    return;
+                }
+                
+                // 获取需要缓存的图片
+                const productsWithImages = Object.values(catalogData).filter(product => 
+                    product.image && (product.image.includes(r2Config.customDomain) || product.image.includes('.r2.cloudflarestorage.com'))
+                );
+                
+                if (productsWithImages.length === 0) {
+                    return;
+                }
+                
+                // 构建缓存队列，排除已缓存的图片
+                this.queue = [];
+                for (const product of productsWithImages) {
+                    const isCached = await getImageFromCache(product.image);
+                    if (!isCached) {
+                        this.queue.push({
+                            code: product.code,
+                            url: product.image
+                        });
+                    }
+                }
+                
+                this.total = this.queue.length;
+                this.processed = 0;
+                this.isRunning = true;
+                
+                if (this.total === 0) {
+                    this.isRunning = false;
+                    return;
+                }
+                
+                // 显示缓存状态指示器
+                this.showStatusIndicator();
+                
+                // 开始处理队列
+                this.processQueue();
+            },
+            
+            // 处理缓存队列
+            async processQueue() {
+                while (this.queue.length > 0 && this.isRunning) {
+                    // 检查并发限制
+                    if (this.activeDownloads >= this.concurrency) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        continue;
+                    }
+                    
+                    // 检查用户活动状态，调整优先级
+                    if (this.userActivity && this.activeDownloads > 0) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        continue;
+                    }
+                    
+                    const item = this.queue.shift();
+                    if (!item) continue;
+                    
+                    this.activeDownloads++;
+                    this.downloadImage(item)
+                        .finally(() => {
+                            this.activeDownloads--;
+                            this.processed++;
+                            this.updateStatusIndicator();
+                            this.saveProgress();
+                        });
+                    
+                    // 添加小延迟以避免过于频繁的请求
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+                
+                // 队列处理完成
+                if (this.queue.length === 0) {
+                    this.isRunning = false;
+                    setTimeout(() => {
+                        this.hideStatusIndicator();
+                        if (this.processed > 0) {
+                            console.log(`后台缓存完成！已缓存 ${this.processed} 张图片`);
+                        }
+                    }, 2000);
+                }
+            },
+            
+            // 下载单张图片
+            async downloadImage(item) {
+                try {
+                    // 检查是否已经在缓存中（防止重复下载）
+                    const cachedBlob = await getImageFromCache(item.url);
+                    if (cachedBlob) {
+                        return;
+                    }
+                    
+                    // 从网络加载
+                    const timestampedUrl = getTimestampedImageUrl(item.url);
+                    const response = await fetch(timestampedUrl);
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        await saveImageToCache(item.url, blob);
+                        
+                        // 更新产品图片状态
+                        if (catalogData[item.code]) {
+                            catalogData[item.code].cached = true;
+                        }
+                    }
+                } catch (error) {
+                    console.error(`后台缓存图片失败 ${item.code}:`, error);
+                }
+            },
+            
+            // 显示状态指示器
+            showStatusIndicator() {
+                const statusElement = document.getElementById('cacheStatus');
+                const statusText = document.getElementById('cacheStatusText');
+                
+                if (statusElement && statusText) {
+                    statusText.textContent = `后台缓存中... (${this.processed}/${this.total})`;
+                    statusElement.classList.remove('hidden');
+                }
+            },
+            
+            // 更新状态指示器
+            updateStatusIndicator() {
+                const statusText = document.getElementById('cacheStatusText');
+                if (statusText) {
+                    statusText.textContent = `后台缓存中... (${this.processed}/${this.total})`;
+                    
+                    // 缓存完成时显示完成状态
+                    if (this.processed >= this.total) {
+                        statusText.textContent = `缓存完成 (${this.processed}/${this.total})`;
+                    }
+                }
+            },
+            
+            // 隐藏状态指示器
+            hideStatusIndicator() {
+                const statusElement = document.getElementById('cacheStatus');
+                if (statusElement) {
+                    setTimeout(() => {
+                        statusElement.classList.add('hidden');
+                    }, 3000);
+                }
+            },
+            
+            // 保存缓存进度
+            saveProgress() {
+                this.cacheProgress = {
+                    processed: this.processed,
+                    total: this.total,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem('background-cache-progress', JSON.stringify(this.cacheProgress));
+            },
+            
+            // 停止后台缓存
+            stop() {
+                this.isRunning = false;
+                this.hideStatusIndicator();
+            }
+        };
+
+        /**
+         * 获取图片的原始URL（去掉时间戳参数）
+         */
+        function getOriginalImageUrl(url) {
+            if (!url) return url;
+            // 移除URL中的时间戳参数
+            return url.split('?')[0];
+        }
+
+        /**
+         * 获取带时间戳的图片URL（用于防止浏览器缓存）
+         */
+        function getTimestampedImageUrl(url) {
+            if (!url) return url;
+            // 如果已经是默认图片或data URL，直接返回
+            if (url.startsWith('data:') || url.includes('svg+xml')) {
+                return url;
+            }
+            // 为R2图片添加时间戳参数
+            const baseUrl = url.split('?')[0];
+            return `${baseUrl}?t=${Date.now()}`;
+        }
+
+        /**
+         * 初始化IndexedDB
+         */
+        function initImageDB() {
+            return new Promise((resolve, reject) => {
+                if (!isImageDBSupported) {
+                    console.warn('IndexedDB is not supported in this browser');
+                    resolve(false);
+                    return;
+                }
+                
+                const request = indexedDB.open(IMAGE_DB_NAME, IMAGE_DB_VERSION);
+                
+                request.onerror = function(event) {
+                    console.error('IndexedDB initialization failed:', event.target.error);
+                    reject(event.target.error);
+                };
+                
+                request.onsuccess = function(event) {
+                    imageDB = event.target.result;
+                    console.log('IndexedDB initialized successfully');
+                    resolve(true);
+                };
+                
+                request.onupgradeneeded = function(event) {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(IMAGE_STORE_NAME)) {
+                        const store = db.createObjectStore(IMAGE_STORE_NAME, { keyPath: 'url' });
+                        store.createIndex('timestamp', 'timestamp', { unique: false });
+                        console.log('Image store created');
+                    }
+                };
+            });
+        }
+
+        /**
+         * 保存图片到缓存
+         */
+        async function saveImageToCache(url, blob) {
+            if (!imageDB || !isImageDBSupported) return false;
+            
+            // 使用原始URL作为缓存key
+            const originalUrl = getOriginalImageUrl(url);
+            
+            return new Promise((resolve, reject) => {
+                const transaction = imageDB.transaction([IMAGE_STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(IMAGE_STORE_NAME);
+                
+                const item = {
+                    url: originalUrl,
+                    blob: blob,
+                    timestamp: Date.now()
+                };
+                
+                const request = store.put(item);
+                
+                request.onsuccess = function() {
+                    console.log('Image saved to cache:', originalUrl);
+                    resolve(true);
+                };
+                
+                request.onerror = function(event) {
+                    console.error('Failed to save image to cache:', event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        /**
+         * 从缓存获取图片
+         */
+        async function getImageFromCache(url) {
+            if (!imageDB || !isImageDBSupported) return null;
+            
+            // 使用原始URL作为缓存key
+            const originalUrl = getOriginalImageUrl(url);
+            
+            return new Promise((resolve, reject) => {
+                const transaction = imageDB.transaction([IMAGE_STORE_NAME], 'readonly');
+                const store = transaction.objectStore(IMAGE_STORE_NAME);
+                
+                const request = store.get(originalUrl);
+                
+                request.onsuccess = function() {
+                    if (request.result) {
+                        // 检查缓存是否过期（7天）
+                        const cacheAge = Date.now() - request.result.timestamp;
+                        const maxAge = 7 * 24 * 60 * 60 * 1000; // 7天
+                        
+                        if (cacheAge > maxAge) {
+                            // 缓存过期，删除并返回null
+                            deleteImageFromCache(originalUrl);
+                            resolve(null);
+                        } else {
+                            console.log('Image loaded from cache:', originalUrl);
+                            resolve(request.result.blob);
+                        }
+                    } else {
+                        resolve(null);
+                    }
+                };
+                
+                request.onerror = function(event) {
+                    console.error('Failed to get image from cache:', event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        /**
+         * 从缓存删除图片
+         */
+        async function deleteImageFromCache(url) {
+            if (!imageDB || !isImageDBSupported) return false;
+            
+            // 使用原始URL作为缓存key
+            const originalUrl = getOriginalImageUrl(url);
+            
+            return new Promise((resolve, reject) => {
+                const transaction = imageDB.transaction([IMAGE_STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(IMAGE_STORE_NAME);
+                
+                const request = store.delete(originalUrl);
+                
+                request.onsuccess = function() {
+                    console.log('Image deleted from cache:', originalUrl);
+                    resolve(true);
+                };
+                
+                request.onerror = function(event) {
+                    console.error('Failed to delete image from cache:', event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        /**
+         * 清空图片缓存
+         */
+        async function clearImageCache() {
+            if (!imageDB || !isImageDBSupported) return false;
+            
+            if (!confirm('确定要清空所有图片缓存吗？这不会删除云端图片。')) {
+                return;
+            }
+            
+            return new Promise((resolve, reject) => {
+                const transaction = imageDB.transaction([IMAGE_STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(IMAGE_STORE_NAME);
+                
+                const request = store.clear();
+                
+                request.onsuccess = function() {
+                    console.log('Image cache cleared');
+                    showToast('图片缓存已清空');
+                    updateStats();
+                    resolve(true);
+                };
+                
+                request.onerror = function(event) {
+                    console.error('Failed to clear image cache:', event.target.error);
+                    showToast('清空缓存失败');
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        /**
+         * 获取缓存统计信息
+         */
+        async function getCacheStats() {
+            if (!imageDB || !isImageDBSupported) {
+                return { count: 0, size: 0 };
+            }
+            
+            return new Promise((resolve, reject) => {
+                const transaction = imageDB.transaction([IMAGE_STORE_NAME], 'readonly');
+                const store = transaction.objectStore(IMAGE_STORE_NAME);
+                const request = store.getAll();
+                
+                request.onsuccess = function() {
+                    const items = request.result;
+                    let totalSize = 0;
+                    
+                    items.forEach(item => {
+                        if (item.blob && item.blob.size) {
+                            totalSize += item.blob.size;
+                        }
+                    });
+                    
+                    resolve({
+                        count: items.length,
+                        size: totalSize
+                    });
+                };
+                
+                request.onerror = function(event) {
+                    console.error('Failed to get cache stats:', event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        /**
+         * 智能图片加载函数 - 支持PhotoSwipe离线查看
+         */
+        async function loadImageWithCache(productCode, imageUrl, imgElement) {
+            if (!imageUrl) {
+                // 没有图片URL，显示默认图片
+                imgElement.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7lm77niYc8L3RleHQ+PC9zdmc+';
+                return;
+            }
+            
+            // 首先尝试从缓存加载
+            const cachedBlob = await getImageFromCache(imageUrl);
+            if (cachedBlob) {
+                const cachedUrl = URL.createObjectURL(cachedBlob);
+                imgElement.src = cachedUrl;
+                imgElement.dataset.cached = 'true';
+                
+                // 为PhotoSwipe更新data-pswp-src属性，确保离线模式下也能查看大图
+                const parentLink = imgElement.closest('a[data-pswp-src]');
+                if (parentLink) {
+                    parentLink.href = cachedUrl;
+                    parentLink.dataset.pswpSrc = cachedUrl;
+                }
+                
+                // 添加缓存指示器
+                if (!imgElement.parentElement.querySelector('.ios-cache-indicator')) {
+                    const indicator = document.createElement('div');
+                    indicator.className = 'ios-cache-indicator';
+                    indicator.title = '已缓存';
+                    imgElement.parentElement.style.position = 'relative';
+                    imgElement.parentElement.appendChild(indicator);
+                }
+                
+                return;
+            }
+            
+            // 缓存中没有，根据网络状态决定
+            if (isOnline && !isReadOnlyMode) {
+                // 在线状态，从网络加载并缓存
+                try {
+                    // 使用带时间戳的URL加载，避免浏览器缓存
+                    const timestampedUrl = getTimestampedImageUrl(imageUrl);
+                    const response = await fetch(timestampedUrl);
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        
+                        // 保存到缓存（使用原始URL作为key）
+                        await saveImageToCache(imageUrl, blob);
+                        
+                        const blobUrl = URL.createObjectURL(blob);
+                        imgElement.src = blobUrl;
+                        imgElement.dataset.cached = 'true';
+                        
+                        // 为PhotoSwipe更新data-pswp-src属性
+                        const parentLink = imgElement.closest('a[data-pswp-src]');
+                        if (parentLink) {
+                            parentLink.href = blobUrl;
+                            parentLink.dataset.pswpSrc = blobUrl;
+                        }
+                        
+                        // 添加缓存指示器
+                        if (!imgElement.parentElement.querySelector('.ios-cache-indicator')) {
+                            const indicator = document.createElement('div');
+                            indicator.className = 'ios-cache-indicator';
+                            indicator.title = '已缓存';
+                            imgElement.parentElement.style.position = 'relative';
+                            imgElement.parentElement.appendChild(indicator);
+                        }
+                    } else {
+                        throw new Error('Network response was not ok');
+                    }
+                } catch (error) {
+                    console.error('Failed to load image from network:', error);
+                    // 网络加载失败，显示默认图片
+                    imgElement.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7lm77niYc8L3RleHQ+PC9zdmc+';
+                    imgElement.dataset.cached = 'false';
+                    
+                    // 添加离线指示器
+                    if (!imgElement.parentElement.querySelector('.ios-cache-indicator')) {
+                        const indicator = document.createElement('div');
+                        indicator.className = 'ios-cache-indicator offline';
+                        indicator.title = '离线模式';
+                        imgElement.parentElement.style.position = 'relative';
+                        imgElement.parentElement.appendChild(indicator);
+                    }
+                }
+            } else {
+                // 离线状态，显示默认图片
+                imgElement.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7lm77niYc8L3RleHQ+PC9zdmc+';
+                imgElement.dataset.cached = 'false';
+                
+                // 添加离线指示器
+                if (!imgElement.parentElement.querySelector('.ios-cache-indicator')) {
+                    const indicator = document.createElement('div');
+                    indicator.className = 'ios-cache-indicator offline';
+                    indicator.title = '离线模式';
+                    imgElement.parentElement.style.position = 'relative';
+                    imgElement.parentElement.appendChild(indicator);
+                }
+            }
+        }
+
+        /**
+         * 检查缓存状态
+         */
+        async function checkCacheStatus() {
+            const stats = await getCacheStats();
+            const cacheSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+            
+            showToast(`缓存状态: ${stats.count} 张图片, ${cacheSizeMB} MB`, 4000);
+        }
+
+        /**
+         * 检测网络状态
+         */
+        function checkNetworkStatus() {
+            const wasOnline = isOnline;
+            isOnline = navigator.onLine;
+            
+            // 更新UI显示
+            document.getElementById('networkStatus').textContent = isOnline ? '在线' : '离线';
+            document.getElementById('networkStatus').style.color = isOnline ? 'var(--ios-system-green)' : 'var(--ios-system-orange)';
+            
+            if (!isMobileDevice()) {
+                document.getElementById('sidebarNetworkStatus').textContent = isOnline ? '在线' : '离线';
+                document.getElementById('sidebarNetworkStatus').style.color = isOnline ? 'var(--ios-system-green)' : 'var(--ios-system-orange)';
+            }
+            
+            if (wasOnline && !isOnline) {
+                // 从在线切换到离线
+                console.log('网络连接已断开，切换到离线模式');
+                enableOfflineMode();
+            } else if (!wasOnline && isOnline) {
+                // 从离线切换到在线
+                console.log('网络连接已恢复，切换到在线模式');
+                disableOfflineMode();
+            }
+            
+            // 网络恢复时重新启动后台缓存
+            if (!wasOnline && isOnline && !backgroundCacheManager.isRunning) {
+                setTimeout(() => {
+                    backgroundCacheManager.start();
+                }, 5000);
+            }
+            
+            return isOnline;
+        }
+
+        /**
+         * 启用离线模式
+         */
+        function enableOfflineMode() {
+            isReadOnlyMode = true;
+            
+            // 显示离线提示条
+            document.getElementById('offlineBar').classList.add('show');
+            
+            // 禁用所有修改操作
+            disableModificationButtons();
+            
+            // 停止后台缓存
+            backgroundCacheManager.stop();
+            
+            // 显示提示信息
+            showToast('已切换到离线模式，使用缓存数据（只读）', 3000);
+            
+            // 重新初始化PhotoSwipe以支持离线查看
+            setTimeout(initPhotoSwipe, 500);
+        }
+
+        /**
+         * 禁用离线模式
+         */
+        function disableOfflineMode() {
+            isReadOnlyMode = false;
+            
+            // 隐藏离线提示条
+            document.getElementById('offlineBar').classList.remove('show');
+            
+            // 启用所有修改操作
+            enableModificationButtons();
+            
+            // 重新从R2加载数据
+            loadDatabaseFromR2().then(success => {
+                if (success) {
+                    showToast('网络已恢复，数据已同步', 2000);
+                    updateStats();
+                    renderManageProducts();
+                    
+                    // 重新启动后台缓存
+                    setTimeout(() => {
+                        backgroundCacheManager.start();
+                    }, 3000);
+                    
+                    // 重新初始化PhotoSwipe
+                    setTimeout(initPhotoSwipe, 500);
+                }
+            });
+        }
+
+        /**
+         * 禁用所有修改按钮
+         */
+        function disableModificationButtons() {
+            const modificationButtons = [
+                'addProductBtn', 'bulkUploadBtn', 'sidebarAddProductBtn', 
+                'sidebarBulkUploadBtn', 'saveProductBtn'
+            ];
+            
+            modificationButtons.forEach(btnId => {
+                const btn = document.getElementById(btnId);
+                if (btn) {
+                    btn.classList.add('offline-disabled');
+                    btn.disabled = true;
+                }
+            });
+            
+            // 禁用管理页面中的编辑和删除按钮
+            document.querySelectorAll('.ios-product-actions .ios-button').forEach(btn => {
+                btn.classList.add('offline-disabled');
+                btn.disabled = true;
+            });
+        }
+
+        /**
+         * 启用所有修改按钮
+         */
+        function enableModificationButtons() {
+            const modificationButtons = [
+                'addProductBtn', 'bulkUploadBtn', 'sidebarAddProductBtn', 
+                'sidebarBulkUploadBtn', 'saveProductBtn'
+            ];
+            
+            modificationButtons.forEach(btnId => {
+                const btn = document.getElementById(btnId);
+                if (btn) {
+                    btn.classList.remove('offline-disabled');
+                    btn.disabled = false;
+                }
+            });
+            
+            // 启用管理页面中的编辑和删除按钮
+            document.querySelectorAll('.ios-product-actions .ios-button').forEach(btn => {
+                btn.classList.remove('offline-disabled');
+                btn.disabled = false;
+            });
+        }
+
+        /**
+         * 保存数据到本地缓存
+         */
+        function saveToLocalCache() {
+            const cacheData = {
+                catalogData: catalogData,
+                searchHistory: searchHistory,
+                uploadedFiles: uploadedFiles,
+                cachedAt: new Date().toISOString(),
+                version: '4.0-r2-offline'
+            };
+            
+            localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+            console.log('数据已保存到本地缓存');
+        }
+
+        /**
+         * 从本地缓存加载数据
+         */
+        function loadFromLocalCache() {
+            try {
+                const cachedData = localStorage.getItem(CACHE_KEY);
+                if (!cachedData) {
+                    console.log('本地缓存不存在');
+                    return false;
+                }
+                
+                const data = JSON.parse(cachedData);
+                
+                // 检查缓存是否过期
+                const cacheTime = new Date(data.cachedAt).getTime();
+                const now = new Date().getTime();
+                if (now - cacheTime > CACHE_EXPIRY) {
+                    console.log('本地缓存已过期');
+                    localStorage.removeItem(CACHE_KEY);
+                    return false;
+                }
+                
+                catalogData = data.catalogData || {};
+                searchHistory = data.searchHistory || [];
+                uploadedFiles = data.uploadedFiles || [];
+                
+                console.log('从本地缓存加载数据成功，产品数量:', Object.keys(catalogData).length);
+                return true;
+            } catch (error) {
+                console.error('加载本地缓存失败:', error);
+                return false;
+            }
+        }
+
+        /**
+         * 清除过期的本地缓存
+         */
+        function clearExpiredCache() {
+            try {
+                const cachedData = localStorage.getItem(CACHE_KEY);
+                if (!cachedData) return;
+                
+                const data = JSON.parse(cachedData);
+                const cacheTime = new Date(data.cachedAt).getTime();
+                const now = new Date().getTime();
+                
+                if (now - cacheTime > CACHE_EXPIRY) {
+                    localStorage.removeItem(CACHE_KEY);
+                    console.log('已清除过期的本地缓存');
+                }
+            } catch (error) {
+                console.error('清除缓存失败:', error);
+            }
+        }
+
+        // ============== 核心改造：纯粹的R2云端存储方案 ==============
+
+        /**
+         * 从R2加载完整数据库
+         */
+        async function loadDatabaseFromR2() {
+            if (!s3Client) {
+                console.warn('R2客户端未初始化');
+                return false;
+            }
+            
+            try {
+                console.log('从R2加载数据库...');
+                const data = await s3Client.getObject({
+                    Bucket: r2Config.bucket,
+                    Key: 'yudong-cloud/database.json'
+                }).promise();
+                
+                const database = JSON.parse(data.Body.toString());
+                catalogData = database.catalogData || {};
+                searchHistory = database.searchHistory || [];
+                uploadedFiles = database.uploadedFiles || [];
+                
+                console.log('数据库加载成功，产品数量:', Object.keys(catalogData).length);
+                
+                // 成功加载后保存到本地缓存
+                saveToLocalCache();
+                
+                return true;
+            } catch (error) {
+                if (error.code === 'NoSuchKey') {
+                    console.log('R2上未找到数据库，初始化空数据库');
+                    catalogData = {};
+                    searchHistory = [];
+                    uploadedFiles = [];
+                    // 立即创建初始数据库
+                    await saveDatabaseToR2();
+                    return true;
+                }
+                console.error('从R2加载数据库失败:', error);
+                throw error;
+            }
+        }
+
+        /**
+         * 保存完整数据库到R2
+         */
+        async function saveDatabaseToR2() {
+            if (!s3Client) {
+                throw new Error('R2客户端未初始化');
+            }
+            
+            const database = {
+                catalogData: catalogData,
+                searchHistory: searchHistory,
+                uploadedFiles: uploadedFiles,
+                lastModified: new Date().toISOString(),
+                version: '4.0-r2-offline'
+            };
+            
+            const dataBlob = new Blob([JSON.stringify(database, null, 2)], { 
+                type: 'application/json' 
+            });
+            
+            try {
+                await s3Client.putObject({
+                    Bucket: r2Config.bucket,
+                    Key: 'yudong-cloud/database.json',
+                    Body: dataBlob,
+                    ContentType: 'application/json'
+                }).promise();
+                
+                console.log('数据库已保存到R2');
+                
+                // 同时保存到本地缓存
+                saveToLocalCache();
+                
+                return true;
+            } catch (error) {
+                console.error('保存数据库到R2失败:', error);
+                throw error;
+            }
+        }
+
+        /**
+         * 统一的数据库操作函数 - 所有CRUD操作都通过这个函数
+         */
+        async function withDatabaseOperation(operation) {
+            // 检查是否处于只读模式
+            if (isReadOnlyMode) {
+                showToast('离线模式下无法修改数据', 2000);
+                throw new Error('离线模式下无法修改数据');
+            }
+            
+            try {
+                // 执行操作
+                const result = await operation();
+                
+                // 操作成功后立即同步到R2
+                await saveDatabaseToR2();
+                
+                // 更新UI
+                updateStats();
+                if (document.getElementById('tabManage').classList.contains('active')) {
+                    renderManageProducts();
+                }
+                
+                return result;
+            } catch (error) {
+                console.error('数据库操作失败:', error);
+                showToast('操作失败: ' + error.message);
+                throw error;
+            }
+        }
+
+        // ============== 图片上传到R2的功能 ==============
+        
+        function generateImageUrl(productCode) {
+            if (!r2Config.customDomain) {
+                throw new Error('R2自定义域名未配置');
+            }
+            
+            const baseUrl = r2Config.customDomain.endsWith('/') 
+                ? r2Config.customDomain 
+                : r2Config.customDomain + '/';
+            
+            return `${baseUrl}yudong-fabric/${productCode}.jpg`;
+        }
+
+        async function uploadToR2(file, productCode) {
+            return new Promise((resolve, reject) => {
+                if (!s3Client) {
+                    reject(new Error('请先配置Cloudflare R2'));
+                    return;
+                }
+                
+                const key = `yudong-fabric/${productCode}.jpg`;
+                
+                s3Client.putObject({
+                    Bucket: r2Config.bucket,
+                    Key: key,
+                    Body: file,
+                    ContentType: 'image/jpeg',
+                }, function(err, data) {
+                    if (err) {
+                        console.error('R2上传失败:', err);
+                        reject(err);
+                    } else {
+                        console.log('R2上传成功:', data);
+                        const imageUrl = generateImageUrl(productCode);
+                        console.log('生成的图片URL:', imageUrl);
+                        resolve(imageUrl);
+                    }
+                });
+            });
+        }
+
+        /**
+         * 获取图片真实尺寸
+         */
+        function getImageDimensions(file) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = function() {
+                    const dimensions = {
+                        width: this.naturalWidth,
+                        height: this.naturalHeight
+                    };
+                    console.log(`获取图片尺寸: ${file.name}, 宽度: ${dimensions.width}, 高度: ${dimensions.height}`);
+                    URL.revokeObjectURL(img.src);
+                    resolve(dimensions);
+                };
+                img.onerror = function() {
+                    URL.revokeObjectURL(img.src);
+                    reject(new Error(`无法加载图片: ${file.name}`));
+                };
+                img.src = URL.createObjectURL(file);
+            });
+        }
+
+        // ============== iOS UI 功能 ==============
+        
+        // 标签页切换
+        document.querySelectorAll('.ios-tab-item').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabName = this.getAttribute('data-tab');
+                
+                document.querySelectorAll('.ios-tab-item').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                document.querySelectorAll('.ios-tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.add('active');
+                
+                updateNavBar(tabName);
+                
+                if (tabName === 'manage') {
+                    setTimeout(renderManageProducts, 50);
+                } else if (tabName === 'data') {
+                    loadR2Config();
+                }
+            });
+        });
+
+        function updateNavBar(tabName) {
+            const navTitle = document.getElementById('navTitle');
+            
+            switch(tabName) {
+                case 'query':
+                    navTitle.textContent = '报价工作台';
+                    break;
+                case 'manage':
+                    navTitle.textContent = '产品管理';
+                    break;
+                case 'data':
+                    navTitle.textContent = '系统设置';
+                    break;
+            }
+        }
+
+        // 模态框功能
+        function showAddProductModal() {
+            // 检查是否处于只读模式
+            if (isReadOnlyMode) {
+                showToast('离线模式下无法添加产品', 2000);
+                return;
+            }
+            document.getElementById('addProductModal').classList.add('active');
+        }
+
+        function hideAddProductModal() {
+            document.getElementById('addProductModal').classList.remove('active');
+            clearForm();
+        }
+
+        // 显示Toast消息
+        function showToast(message, duration = 2000) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, duration);
+        }
+
+        // ============== 核心功能实现 - 优化版组合查询 ==============
+        
+        /**
+         * 优化版组合查询解析器
+         */
+        function parseCombinedQuery(input) {
+            const conditions = [];
+            const tokens = input.split(/[\s,，、\n]+/).filter(token => token.trim());
+            
+            tokens.forEach(token => {
+                token = token.trim();
+                
+                // 1. 系列条件
+                const seriesMatch = token.match(/([A-Z]+)系列/i);
+                if (seriesMatch) {
+                    conditions.push({
+                        type: 'series',
+                        value: seriesMatch[1].toUpperCase()
+                    });
+                    return;
+                }
+                
+                // 2. 价格区间
+                const priceMatch = token.match(/(\d+(?:\.\d+)?)\s*元内/i) || 
+                                   token.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*元/i) ||
+                                   token.match(/(\d+(?:\.\d+)?)\s*元以上/i);
+                if (priceMatch) {
+                    if (token.includes('元内')) {
+                        conditions.push({
+                            type: 'price',
+                            min: 0,
+                            max: parseFloat(priceMatch[1])
+                        });
+                    } else if (token.includes('-')) {
+                        conditions.push({
+                            type: 'price',
+                            min: parseFloat(priceMatch[1]),
+                            max: parseFloat(priceMatch[2])
+                        });
+                    } else if (token.includes('元以上')) {
+                        conditions.push({
+                            type: 'price',
+                            min: parseFloat(priceMatch[1]),
+                            max: Infinity
+                        });
+                    }
+                    return;
+                }
+                
+                // 3. 克重区间
+                const weightMatch = token.match(/(\d+(?:\.\d+)?)\s*克内/i) || 
+                                    token.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*克/i) ||
+                                    token.match(/(\d+(?:\.\d+)?)\s*克以上/i);
+                if (weightMatch) {
+                    if (token.includes('克内')) {
+                        conditions.push({
+                            type: 'weight',
+                            min: 0,
+                            max: parseFloat(weightMatch[1])
+                        });
+                    } else if (token.includes('-')) {
+                        conditions.push({
+                            type: 'weight',
+                            min: parseFloat(weightMatch[1]),
+                            max: parseFloat(weightMatch[2])
+                        });
+                    } else if (token.includes('克以上')) {
+                        conditions.push({
+                            type: 'weight',
+                            min: parseFloat(weightMatch[1]),
+                            max: Infinity
+                        });
+                    }
+                    return;
+                }
+                
+                // 4. 供应商条件
+                if (token.length > 1 && !token.match(/[\d元克]/) && !token.includes('系列')) {
+                    conditions.push({
+                        type: 'supplier',
+                        value: token
+                    });
+                    return;
+                }
+                
+                // 5. 成分条件
+                const compositionMatch = token.match(/(棉|锦纶|涤纶|氨纶|羊毛|丝|麻)/i);
+                if (compositionMatch) {
+                    conditions.push({
+                        type: 'composition',
+                        value: token
+                    });
+                    return;
+                }
+                
+                // 6. 产品代码模糊匹配
+                if (token.match(/^[A-Z\d]+$/i)) {
+                    conditions.push({
+                        type: 'code',
+                        value: token.toUpperCase()
+                    });
+                }
+            });
+            
+            return conditions;
+        }
+
+        /**
+         * 执行组合查询
+         */
+        function performCombinedQuery(conditions) {
+            return Object.values(catalogData).filter(product => {
+                return conditions.every(condition => {
+                    switch (condition.type) {
+                        case 'series':
+                            return product.code.startsWith(condition.value);
+                        
+                        case 'price':
+                            const price = parseFloat(product.priceAlt);
+                            return !isNaN(price) && price >= (condition.min || 0) && price <= (condition.max || Infinity);
+                        
+                        case 'weight':
+                            const weight = parseFloat(product.weight);
+                            return !isNaN(weight) && weight >= (condition.min || 0) && weight <= (condition.max || Infinity);
+                        
+                        case 'supplier':
+                            return product.supplier && product.supplier.includes(condition.value);
+                        
+                        case 'composition':
+                            if (!product.composition) return false;
+                            const productComposition = product.composition.replace(/\s+/g, '').replace(/%/g, '');
+                            const conditionComposition = condition.value.replace(/\s+/g, '').replace(/%/g, '');
+                            const conditionParts = conditionComposition.match(/\d+|[^\d]+/g) || [];
+                            const productParts = productComposition.match(/\d+|[^\d]+/g) || [];
+                            
+                            if (conditionParts.length === 1 && !/\d/.test(conditionParts[0])) {
+                                return productComposition.includes(conditionParts[0]);
+                            }
+                            
+                            return conditionParts.every(part => 
+                                productParts.some(pPart => pPart.includes(part))
+                            );
+                        
+                        case 'code':
+                            return product.code.includes(condition.value);
+                        
+                        default:
+                            return true;
+                    }
+                });
+            });
+        }
+
+        /**
+         * 优化版搜索处理函数
+         */
+        function handleSearch(inputValue) {
+            const input = (inputValue || document.getElementById('searchInput').value).trim();
+            if (!input) {
+                searchResults = [];
+                fuzzyMatches = [];
+                rangeResults = [];
+                renderResults();
+                return;
+            }
+            
+            // 保存搜索历史到R2
+            if (!isReadOnlyMode) {
+                withDatabaseOperation(async () => {
+                    if (!searchHistory.includes(input)) {
+                        searchHistory.push(input);
+                        if (searchHistory.length > 10) searchHistory.shift();
+                    }
+                }).then(() => {
+                    renderHistory();
+                    updateSidebarHistory();
+                });
+            } else {
+                // 离线模式下只更新本地缓存
+                if (!searchHistory.includes(input)) {
+                    searchHistory.push(input);
+                    if (searchHistory.length > 10) searchHistory.shift();
+                    saveToLocalCache();
+                    renderHistory();
+                    updateSidebarHistory();
+                }
+            }
+            
+            // 首先尝试组合查询
+            const conditions = parseCombinedQuery(input);
+            if (conditions.length > 0) {
+                console.log('组合查询条件:', conditions);
+                const combinedResults = performCombinedQuery(conditions);
+                
+                if (combinedResults.length > 0) {
+                    searchResults = combinedResults.map(product => ({
+                        ...product,
+                        found: true,
+                        matchType: 'combined'
+                    }));
+                    fuzzyMatches = [];
+                    rangeResults = [];
+                    renderResults();
+                    return;
+                }
+            }
+            
+            // 如果组合查询没有结果，回退到原来的查询逻辑
+            const parsed = parseRangeInput(input);
+            if (parsed.ranges.length > 0 && (parsed.type === 'price' || parsed.type === 'weight')) {
+                rangeResults = performRangeQuery(parsed.ranges, parsed.type);
+                searchResults = [];
+                fuzzyMatches = [];
+            } else {
+                const codes = input.split(/[\s,;\n]+/).map(c => c.trim()).filter(c => c.length > 0);
+                searchResults = [];
+                fuzzyMatches = [];
+                rangeResults = [];
+                
+                codes.forEach(code => {
+                    if (catalogData[code]) {
+                        const result = {...catalogData[code]};
+                        result.found = true;
+                        result.matchType = 'exact';
+                        searchResults.push(result);
+                    } else {
+                        const matches = Object.keys(catalogData).filter(key => {
+                            const product = catalogData[key];
+                            const codeMatch = key.toUpperCase().includes(code);
+                            const supplierMatch = product.supplier && product.supplier.toUpperCase().includes(code);
+                            return codeMatch || supplierMatch;
+                        });
+                        
+                        if (matches.length === 1) {
+                            const result = {...catalogData[matches[0]]};
+                            result.found = true;
+                            result.matchType = 'fuzzy';
+                            searchResults.push(result);
+                        } else if (matches.length > 1) {
+                            fuzzyMatches.push({ searchTerm: code, matches: matches.slice(0, 50) });
+                        } else {
+                            searchResults.push({ code: code, found: false, error: '未找到该产品' });
+                        }
+                    }
+                });
+            }
+            
+            renderResults();
+        }
+
+        // 保留原有的范围查询函数
+        function parseRangeInput(input) {
+            const ranges = [];
+            const items = input.split(/[,，\s]+/).map(item => item.trim()).filter(item => item);
+            let type = null;
+            
+            items.forEach(item => {
+                const upper = item.toUpperCase();
+                let min = null, max = null, label = item;
+                
+                if (upper.includes('元')) {
+                    type = 'price';
+                    if (upper.includes('以上')) {
+                        min = parseFloat(upper.replace(/[^0-9.]/g, ''));
+                        max = Infinity;
+                    } else if (upper.includes('内')) {
+                        max = parseFloat(upper.replace(/[^0-9.]/g, ''));
+                        min = 0;
+                    } else {
+                        const match = upper.match(/(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)元/);
+                        if (match) {
+                            min = parseFloat(match[1]);
+                            max = parseFloat(match[2]);
+                        }
+                    }
+                } else if (upper.includes('克')) {
+                    type = 'weight';
+                    if (upper.includes('以上')) {
+                        min = parseFloat(upper.replace(/[^0-9.]/g, ''));
+                        max = Infinity;
+                    } else if (upper.includes('内')) {
+                        max = parseFloat(upper.replace(/[^0-9.]/g, ''));
+                        min = 0;
+                    } else {
+                        const match = upper.match(/(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)克/);
+                        if (match) {
+                            min = parseFloat(match[1]);
+                            max = parseFloat(match[2]);
+                        }
+                    }
+                }
+                
+                if (min !== null || max !== null) {
+                    ranges.push({ min, max, label, type });
+                }
+            });
+            
+            return { ranges, type };
+        }
+
+        function performRangeQuery(ranges, type) {
+            const results = [];
+            const field = type === 'price' ? 'priceAlt' : 'weight';
+            
+            ranges.forEach(range => {
+                const matches = [];
+                Object.values(catalogData).forEach(product => {
+                    const value = parseFloat(product[field]);
+                    if (!isNaN(value) && value >= (range.min || 0) && value <= (range.max || Infinity)) {
+                        const match = JSON.parse(JSON.stringify(product));
+                        match.matchType = 'range';
+                        match.rangeLabel = range.label;
+                        matches.push(match);
+                    }
+                });
+                
+                matches.sort((a, b) => {
+                    const seriesA = a.code.match(/^[YC]*([ACDFGJMST])/);
+                    const seriesB = b.code.match(/^[YC]*([ACDFGJMST])/);
+                    const seriesAChar = seriesA ? seriesA[1] : '';
+                    const seriesBChar = seriesB ? seriesB[1] : '';
+                    if (seriesAChar !== seriesBChar) return seriesAChar.localeCompare(seriesBChar);
+                    const numA = parseInt(a.code.replace(/^[YC]*[ACDFGJMST]/, '')) || 0;
+                    const numB = parseInt(b.code.replace(/^[YC]*[ACDFGJMST]/, '')) || 0;
+                    return numA - numB;
+                });
+                
+                const result = JSON.parse(JSON.stringify(range));
+                result.matches = matches;
+                results.push(result);
+            });
+            
+            return results;
+        }
+
+        // 渲染产品代码汇总卡片
+        function renderCodeSummaryCard(allResults) {
+            const codeSummaryCard = document.getElementById('codeSummaryCard');
+            const codeSummaryCount = document.getElementById('codeSummaryCount');
+            const codeSummaryGrid = document.getElementById('codeSummaryGrid');
+            
+            if (allResults.length === 0) {
+                codeSummaryCard.style.display = 'none';
+                return;
+            }
+            
+            const uniqueCodes = [...new Set(allResults.map(result => result.code))];
+            
+            codeSummaryCount.textContent = `${uniqueCodes.length} 个`;
+            codeSummaryGrid.innerHTML = '';
+            
+            uniqueCodes.forEach(code => {
+                const codeItem = document.createElement('div');
+                codeItem.className = 'ios-code-item';
+                codeItem.textContent = code;
+                codeItem.onclick = () => {
+                    const productCard = document.getElementById(`product-${code}`);
+                    if (productCard) {
+                        productCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        productCard.style.boxShadow = '0 0 0 2px var(--ios-system-blue)';
+                        setTimeout(() => {
+                            productCard.style.boxShadow = '';
+                        }, 2000);
+                    }
+                };
+                codeSummaryGrid.appendChild(codeItem);
+            });
+            
+            codeSummaryCard.style.display = 'block';
+        }
+
+        // 渲染产品卡片
+        function renderProductCard(product, isSearchResult = false) {
+            let imageUrl = product.image;
+            // 不再在渲染时添加时间戳，而是在加载图片时动态添加
+            const displayImageUrl = imageUrl; // 使用原始URL
+            
+            const hasImage = imageUrl && imageUrl !== '';
+            const imageWidth = product.imageWidth || 1200;
+            const imageHeight = product.imageHeight || 800;
+            
+            // 离线模式下禁用编辑删除按钮
+            const actionButtonsDisabled = isReadOnlyMode ? 'offline-disabled" disabled="true' : '';
+            
+            return `
+            <div class="ios-product-card ios-fade-in" id="product-${product.code}">
+                <div class="ios-product-header">
+                    <div class="ios-product-code-container">
+                        <div class="ios-product-code">${product.code}</div>
+                        <div class="ios-product-status ${hasImage ? '' : 'missing'}"></div>
+                    </div>
+                    
+                    <div class="ios-product-image-container">
+                        ${hasImage ? `
+                        <a href="${displayImageUrl}" data-pswp-src="${displayImageUrl}" data-pswp-width="${imageWidth}" data-pswp-height="${imageHeight}">
+                            <div class="ios-product-image">
+                                <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7lm77niYc8L3RleHQ+PC9zdmc+" alt="${product.code}" data-product-code="${product.code}" data-image-url="${displayImageUrl}">
+                            </div>
+                        </a>
+                        ` : `
+                        <div class="ios-product-image" style="color: var(--ios-label-tertiary); cursor: default;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 16px; margin-bottom: 2px;">📷</div>
+                                <div style="font-size: 9px; font-weight: 600;">无图片</div>
+                            </div>
+                        </div>
+                        `}
+                    </div>
+                </div>
+                
+                <div class="ios-product-details">
+                    <div class="ios-product-detail">
+                        <div class="ios-product-detail-label">码价</div>
+                        <div class="ios-product-detail-value">${product.price}</div>
+                    </div>
+                    <div class="ios-product-detail">
+                        <div class="ios-product-detail-label">米价</div>
+                        <div class="ios-product-detail-value">${product.priceAlt}</div>
+                    </div>
+                    <div class="ios-product-detail">
+                        <div class="ios-product-detail-label">门幅</div>
+                        <div class="ios-product-detail-value">${product.width}</div>
+                    </div>
+                    <div class="ios-product-detail">
+                        <div class="ios-product-detail-label">克重</div>
+                        <div class="ios-product-detail-value">${product.weight}</div>
+                    </div>
+                    <div class="ios-product-detail">
+                        <div class="ios-product-detail-label">成分</div>
+                        <div class="ios-product-detail-value">${product.composition}</div>
+                    </div>
+                    <div class="ios-product-detail">
+                        <div class="ios-product-detail-label">供应商</div>
+                        <div class="ios-product-detail-value">${product.supplier}</div>
+                    </div>
+                </div>
+                
+                ${product.notes && product.notes !== '-' ? `<div class="ios-product-notes">${product.notes}</div>` : ''}
+                
+                ${!isSearchResult ? `
+                <div class="ios-product-actions">
+                    <button class="ios-button ios-button-small ${actionButtonsDisabled}" onclick="editProduct('${product.code}')">编辑</button>
+                    <button class="ios-button ios-button-destructive ios-button-small ${actionButtonsDisabled}" onclick="deleteProductFromList('${product.code}')">删除</button>
+                </div>
+                ` : ''}
+            </div>
+            `;
+        }
+
+        // 初始化图片加载
+        function initImageLoading() {
+            // 为所有图片元素添加加载监听
+            document.addEventListener('DOMContentLoaded', function() {
+                // 使用MutationObserver监听动态添加的图片
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        mutation.addedNodes.forEach(function(node) {
+                            if (node.nodeType === 1) { // Element node
+                                const images = node.querySelectorAll ? node.querySelectorAll('img[data-product-code]') : [];
+                                images.forEach(img => {
+                                    const productCode = img.getAttribute('data-product-code');
+                                    const imageUrl = img.getAttribute('data-image-url');
+                                    if (productCode && imageUrl) {
+                                        loadImageWithCache(productCode, imageUrl, img);
+                                    }
+                                });
+                            }
+                        });
+                    });
+                });
+                
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+                
+                // 初始加载现有图片
+                document.querySelectorAll('img[data-product-code]').forEach(img => {
+                    const productCode = img.getAttribute('data-product-code');
+                    const imageUrl = img.getAttribute('data-image-url');
+                    if (productCode && imageUrl) {
+                                        loadImageWithCache(productCode, imageUrl, img);
+                                    }
+                                });
+                            });
+        }
+
+        function renderResults() {
+            let html = '';
+            let allResults = [];
+            
+            if (rangeResults.length > 0) {
+                rangeResults.forEach(range => {
+                    range.matches.forEach(product => {
+                        allResults.push(product);
+                    });
+                });
+            } else {
+                searchResults.filter(r => r.found).forEach(r => {
+                    allResults.push(r);
+                });
+            }
+            
+            renderCodeSummaryCard(allResults);
+            
+            if (rangeResults.length > 0) {
+                rangeResults.forEach(range => {
+                    html += `<div class="ios-card mb-md">
+                        <div class="ios-card-header">
+                            <div class="ios-card-title">📊 ${range.label} - ${range.matches.length} 个匹配产品</div>
+                        </div>
+                        <div class="ios-card-content">`;
+                    
+                    range.matches.forEach(product => {
+                        html += renderProductCard(product, true);
+                    });
+                    
+                    html += `</div></div>`;
+                });
+            } else {
+                if (fuzzyMatches.length > 0) {
+                    html += '<div class="ios-card mb-md">';
+                    html += '<div class="ios-card-header"><div class="ios-card-title">模糊匹配结果</div></div>';
+                    html += '<div class="ios-card-content">';
+                    fuzzyMatches.forEach(group => {
+                        html += `<p class="mb-sm">搜索词 "${group.searchTerm}" 找到 ${group.matches.length} 个匹配：</p>`;
+                        html += '<div style="display: flex; flex-wrap: wrap; gap: var(--ios-spacing-sm);">';
+                        group.matches.forEach(code => {
+                            html += `<button class="ios-button ios-button-secondary ios-button-compact" onclick="selectFuzzyMatch('${code}')">${code}</button>`;
+                        });
+                        html += '</div>';
+                    });
+                    html += '</div></div>';
+                }
+                
+                searchResults.forEach(result => {
+                    if (result.found) {
+                        html += renderProductCard(result, true);
+                    } else {
+                        html += `
+                        <div class="ios-card mb-md">
+                            <div class="ios-card-content">
+                                <div style="text-align: center; color: var(--ios-system-red);">
+                                    <div style="font-size: 24px; margin-bottom: var(--ios-spacing-sm);">⚠️</div>
+                                    <div style="font-weight: 600;">${result.code}</div>
+                                    <div style="font-size: 13px; color: var(--ios-label-secondary); margin-top: var(--ios-spacing-xs);">${result.error}</div>
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                    }
+                });
+            }
+            
+            document.getElementById('resultsArea').innerHTML = html;
+            const hasResults = html.length > 0 || allResults.length > 0;
+            document.getElementById('resultsSection').style.display = hasResults ? 'block' : 'none';
+            document.getElementById('pdfExportSection').style.display = hasResults ? 'block' : 'none';
+            
+            // 初始化图片加载
+            setTimeout(() => {
+                document.querySelectorAll('#resultsArea img[data-product-code]').forEach(img => {
+                    const productCode = img.getAttribute('data-product-code');
+                    const imageUrl = img.getAttribute('data-image-url');
+                    if (productCode && imageUrl) {
+                        loadImageWithCache(productCode, imageUrl, img);
+                    }
+                });
+            }, 100);
+            
+            initPhotoSwipe();
+        }
+
+        function selectFuzzyMatch(code) {
+            document.getElementById('searchInput').value = code;
+            handleSearch(code);
+        }
+
+        // ============== PhotoSwipe图片查看器初始化 - 修复离线模式支持 ==============
+        function initPhotoSwipe() {
+            if (photoSwipeLightbox) {
+                photoSwipeLightbox.destroy();
+            }
+            
+            photoSwipeLightbox = new PhotoSwipeLightbox({
+                gallery: '#resultsArea, #manageProductList',
+                children: 'a[data-pswp-src]',
+                pswpModule: PhotoSwipe,
+                
+                wheelToZoom: true,
+                initialZoomLevel: 'fit',
+                secondaryZoomLevel: 1.5,
+                maxZoomLevel: 4,
+                closeOnVerticalDrag: true,
+                hideAnimationDuration: 200,
+                showAnimationDuration: 200,
+                zoomAnimationDuration: 200,
+                bgOpacity: 0.9,
+                
+                allowPanToNext: true,
+                maxWidthToAnimate: 4000,
+                maxHeightToAnimate: 4000,
+                easing: 'cubic-bezier(.4, 0,.22,1)',
+                
+                preload: [1, 2],
+                preloaderDelay: 0
+            });
+            
+            // 修复离线模式支持：在打开前检查缓存
+            photoSwipeLightbox.on('beforeOpen', async () => {
+                if (!isOnline) {
+                    const dataSource = photoSwipeLightbox.pswp.options.dataSource;
+                    if (Array.isArray(dataSource)) {
+                        for (let i = 0; i < dataSource.length; i++) {
+                            const item = dataSource[i];
+                            // 检查是否有缓存
+                            const cachedBlob = await getImageFromCache(item.src);
+                            if (cachedBlob) {
+                                const blobUrl = URL.createObjectURL(cachedBlob);
+                                // 保存原始URL以便关闭时恢复
+                                item._originalSrc = item.src;
+                                item.src = blobUrl;
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 清理Blob URL
+            photoSwipeLightbox.on('close', () => {
+                if (!isOnline) {
+                    const dataSource = photoSwipeLightbox.pswp.options.dataSource;
+                    if (Array.isArray(dataSource)) {
+                        dataSource.forEach(item => {
+                            if (item._originalSrc) {
+                                // 释放Blob URL
+                                URL.revokeObjectURL(item.src);
+                                item.src = item._originalSrc;
+                                delete item._originalSrc;
+                            }
+                        });
+                    }
+                }
+            });
+            
+            photoSwipeLightbox.on('itemData', (e) => {
+                const imgElement = e.itemData.element;
+                if (imgElement) {
+                    const width = parseInt(imgElement.getAttribute('data-pswp-width')) || 0;
+                    const height = parseInt(imgElement.getAttribute('data-pswp-height')) || 0;
+                    
+                    if (width && height) {
+                        e.itemData.width = width;
+                        e.itemData.height = height;
+                    } else {
+                        e.itemData.width = 1200;
+                        e.itemData.height = 800;
+                    }
+                }
+            });
+            
+            photoSwipeLightbox.on('uiRegister', function() {
+                photoSwipeLightbox.pswp.ui.registerElement({
+                    name: 'download-button',
+                    order: 8,
+                    isButton: true,
+                    tagName: 'a',
+                    html: '⬇️',
+                    onInit: (el, pswp) => {
+                        el.setAttribute('download', '');
+                        el.setAttribute('target', '_blank');
+                        el.setAttribute('rel', 'noopener');
+                        el.setAttribute('title', '下载图片');
+                        
+                        pswp.on('change', () => {
+                            const slide = pswp.currSlide;
+                            if (slide) {
+                                el.href = slide.data.src;
+                            }
+                        });
+                    }
+                });
+            });
+            
+            photoSwipeLightbox.init();
+        }
+
+        // ============== 产品管理功能 - 纯粹的R2云端存储 ==============
+        async function addOrUpdateProduct() {
+            // 检查是否处于只读模式
+            if (isReadOnlyMode) {
+                showToast('离线模式下无法添加产品', 2000);
+                return;
+            }
+            
+            const saveButton = document.querySelector('.ios-modal-header .ios-nav-button:last-child');
+            const originalText = saveButton.textContent;
+            
+            saveButton.textContent = '保存中...';
+            saveButton.classList.add('ios-button-saving');
+            
+            const inputs = document.querySelectorAll('#addProductModal .ios-input, #addProductModal #imageInput');
+            inputs.forEach(input => input.disabled = true);
+            
+            try {
+                const code = document.getElementById('codeInput').value.trim().toUpperCase();
+                if (!code || !code.match(/^[YC]*[ACDFGJMST]\d+/)) {
+                    showToast('产品代码格式无效（例如：C6001, YC2001）');
+                    return;
+                }
+                
+                const imageFile = document.getElementById('imageInput').files[0];
+                let imageUrl = catalogData[code] ? catalogData[code].image : null;
+                let imageWidth = catalogData[code] ? catalogData[code].imageWidth : null;
+                let imageHeight = catalogData[code] ? catalogData[code].imageHeight : null;
+                
+                if (imageFile) {
+                    if (imageFile.size > 5 * 1024 * 1024) {
+                        showToast('图片过大（>5MB），请压缩后上传');
+                        return;
+                    }
+                    
+                    try {
+                        const dimensions = await getImageDimensions(imageFile);
+                        imageWidth = dimensions.width;
+                        imageHeight = dimensions.height;
+                        
+                        if (s3Client) {
+                            imageUrl = await uploadToR2(imageFile, code);
+                        } else {
+                            throw new Error('请先配置Cloudflare R2');
+                        }
+                    } catch (error) {
+                        console.error('图片处理失败:', error);
+                        showToast('图片处理失败: ' + error.message);
+                        return;
+                    }
+                }
+                
+                // 使用统一的数据库操作函数
+                await withDatabaseOperation(async () => {
+                    catalogData[code] = {
+                        code: code,
+                        price: document.getElementById('priceInput').value || '-',
+                        priceAlt: document.getElementById('priceAltInput').value || '-',
+                        width: document.getElementById('widthInput').value || '-',
+                        composition: document.getElementById('compositionInput').value || '-',
+                        weight: document.getElementById('weightInput').value || '-',
+                        notes: document.getElementById('notesInput').value || '-',
+                        supplier: document.getElementById('supplierInput').value || '-',
+                        image: imageUrl,
+                        imageWidth: imageWidth,
+                        imageHeight: imageHeight
+                    };
+                });
+                
+                if (editingCode) {
+                    showToast('产品已更新');
+                } else {
+                    showToast('产品已添加');
+                }
+                
+                hideAddProductModal();
+            } catch (error) {
+                console.error('保存产品失败:', error);
+                showToast('保存失败: ' + error.message);
+            } finally {
+                saveButton.textContent = originalText;
+                saveButton.classList.remove('ios-button-saving');
+                inputs.forEach(input => input.disabled = false);
+            }
+        }
+
+        function editProduct(code) {
+            // 检查是否处于只读模式
+            if (isReadOnlyMode) {
+                showToast('离线模式下无法编辑产品', 2000);
+                return;
+            }
+            
+            const product = catalogData[code];
+            if (!product) return;
+            
+            document.getElementById('codeInput').value = product.code;
+            document.getElementById('supplierInput').value = product.supplier;
+            document.getElementById('priceInput').value = product.price;
+            document.getElementById('priceAltInput').value = product.priceAlt;
+            document.getElementById('widthInput').value = product.width;
+            document.getElementById('weightInput').value = product.weight;
+            document.getElementById('compositionInput').value = product.composition;
+            document.getElementById('notesInput').value = product.notes;
+            
+            editingCode = code;
+            showAddProductModal();
+        }
+
+        function clearForm() {
+            document.getElementById('codeInput').value = '';
+            document.getElementById('supplierInput').value = '';
+            document.getElementById('priceInput').value = '';
+            document.getElementById('priceAltInput').value = '';
+            document.getElementById('widthInput').value = '';
+            document.getElementById('weightInput').value = '';
+            document.getElementById('compositionInput').value = '';
+            document.getElementById('notesInput').value = '';
+            document.getElementById('imageInput').value = '';
+            
+            editingCode = null;
+        }
+
+        async function deleteProductFromList(code) {
+            // 检查是否处于只读模式
+            if (isReadOnlyMode) {
+                showToast('离线模式下无法删除产品', 2000);
+                return;
+            }
+            
+            if (confirm('确定删除产品 ' + code + '？')) {
+                try {
+                    await withDatabaseOperation(async () => {
+                        delete catalogData[code];
+                    });
+                    showToast('产品已删除');
+                } catch (error) {
+                    showToast('删除失败: ' + error.message);
+                }
+            }
+        }
+
+        function filterManageProducts() {
+            manageSearchTerm = document.getElementById('manageSearchInput').value.toUpperCase();
+            manageCurrentPage = 1;
+            renderManageProducts();
+        }
+
+        function renderManageProducts() {
+            const listDiv = document.getElementById('manageProductList');
+            let html = '';
+            
+            const products = Object.values(catalogData).filter(p => {
+                return p.code.toUpperCase().includes(manageSearchTerm) || 
+                       (p.supplier && p.supplier.toUpperCase().includes(manageSearchTerm));
+            });
+            
+            filteredManageProducts = products.sort((a, b) => {
+                const seriesA = a.code.match(/^[YC]*([ACDFGJMST])/);
+                const seriesB = b.code.match(/^[YC]*([ACDFGJMST])/);
+                const seriesAChar = seriesA ? seriesA[1] : '';
+                const seriesBChar = seriesB ? seriesB[1] : '';
+                if (seriesAChar !== seriesBChar) return seriesAChar.localeCompare(seriesBChar);
+                const numA = parseInt(a.code.replace(/^[YC]*[ACDFGJMST]/, '')) || 0;
+                const numB = parseInt(b.code.replace(/^[YC]*[ACDFGJMST]/, '')) || 0;
+                return numA - numB;
+            });
+            
+            const start = (manageCurrentPage - 1) * managePageSize;
+            const end = start + managePageSize;
+            const pageProducts = filteredManageProducts.slice(start, end);
+            
+            if (pageProducts.length === 0) {
+                html = `
+                <div class="ios-card">
+                    <div class="ios-card-content" style="text-align: center; color: var(--ios-label-tertiary);">
+                        <div style="font-size: 48px; margin-bottom: var(--ios-spacing-md);">📦</div>
+                        <div style="font-size: 17px; font-weight: 600; margin-bottom: var(--ios-spacing-sm);">暂无产品数据</div>
+                        <div style="font-size: 14px;">点击"添加产品"开始创建您的第一个产品</div>
+                    </div>
+                </div>
+                `;
+            } else {
+                if (window.innerWidth >= 1200) {
+                    html = '<div class="ios-product-grid">';
+                    pageProducts.forEach(product => {
+                        html += renderProductCard(product, false);
+                    });
+                    html += '</div>';
+                } else {
+                    pageProducts.forEach(product => {
+                        html += renderProductCard(product, false);
+                    });
+                }
+            }
+            
+            listDiv.innerHTML = html;
+            hasMoreProducts = end < filteredManageProducts.length;
+            document.getElementById('loadMoreContainer').style.display = hasMoreProducts ? 'block' : 'none';
+            
+            // 初始化图片加载
+            setTimeout(() => {
+                document.querySelectorAll('#manageProductList img[data-product-code]').forEach(img => {
+                    const productCode = img.getAttribute('data-product-code');
+                    const imageUrl = img.getAttribute('data-image-url');
+                    if (productCode && imageUrl) {
+                        loadImageWithCache(productCode, imageUrl, img);
+                    }
+                });
+            }, 100);
+            
+            initPhotoSwipe();
+        }
+
+        function loadMoreProducts() {
+            manageCurrentPage++;
+            renderManageProducts();
+        }
+
+        // ============== 搜索框重置功能 ==============
+        function resetSearch() {
+            const searchInput = document.getElementById('searchInput');
+            const searchReset = document.getElementById('searchReset');
+            
+            searchInput.value = '';
+            searchReset.classList.remove('show');
+            
+            searchResults = [];
+            fuzzyMatches = [];
+            rangeResults = [];
+            renderResults();
+        }
+
+        function resetManageSearch() {
+            const manageSearchInput = document.getElementById('manageSearchInput');
+            const manageSearchReset = document.getElementById('manageSearchReset');
+            
+            manageSearchInput.value = '';
+            manageSearchReset.classList.remove('show');
+            
+            manageSearchTerm = '';
+            manageCurrentPage = 1;
+            renderManageProducts();
+        }
+
+        // ============== R2配置管理 ==============
+        function saveR2Config() {
+            r2Config = {
+                accountId: document.getElementById('r2AccountId').value.trim(),
+                accessKey: document.getElementById('r2AccessKey').value.trim(),
+                secretKey: document.getElementById('r2SecretKey').value.trim(),
+                bucket: document.getElementById('r2Bucket').value.trim(),
+                customDomain: document.getElementById('r2CustomDomain').value.trim()
+            };
+            localStorage.setItem('r2-config', JSON.stringify(r2Config));
+            loadR2Config();
+            showToast('R2配置已保存');
+        }
+
+        function loadR2Config() {
+            r2Config = JSON.parse(localStorage.getItem('r2-config') || '{}');
+            document.getElementById('r2AccountId').value = r2Config.accountId || '';
+            document.getElementById('r2AccessKey').value = r2Config.accessKey || '';
+            document.getElementById('r2SecretKey').value = r2Config.secretKey || '';
+            document.getElementById('r2Bucket').value = r2Config.bucket || '';
+            document.getElementById('r2CustomDomain').value = r2Config.customDomain || 'https://img.yudong-textile.top';
+            
+            if (r2Config.accessKey && r2Config.secretKey && r2Config.accountId && r2Config.bucket) {
+                s3Client = new AWS.S3({
+                    endpoint: `https://${r2Config.accountId}.r2.cloudflarestorage.com`,
+                    accessKeyId: r2Config.accessKey,
+                    secretAccessKey: r2Config.secretKey,
+                    s3ForcePathStyle: true,
+                    signatureVersion: 'v4',
+                    region: 'auto'
+                });
+                console.log('R2客户端已初始化');
+            } else {
+                s3Client = null;
+                console.log('R2配置不完整，客户端未初始化');
+            }
+        }
+
+        function testR2Connection() {
+            loadR2Config();
+            if (!r2Config.accessKey || !r2Config.secretKey || !r2Config.bucket || !r2Config.accountId) {
+                showToast('请先完整填写R2配置');
+                return;
+            }
+            
+            showToast('正在测试R2连接...');
+            
+            s3Client = new AWS.S3({
+                endpoint: `https://${r2Config.accountId}.r2.cloudflarestorage.com`,
+                accessKeyId: r2Config.accessKey,
+                secretAccessKey: r2Config.secretKey,
+                s3ForcePathStyle: true,
+                signatureVersion: 'v4',
+                region: 'auto'
+            });
+            
+            const testKey = `yudong-test/test-${Date.now()}.txt`;
+            const testContent = 'Cloudflare R2 connection test';
+            
+            s3Client.putObject({
+                Bucket: r2Config.bucket,
+                Key: testKey,
+                Body: testContent,
+                ContentType: 'text/plain'
+            }, function(err) {
+                if (err) {
+                    let errorMsg = 'R2连接测试失败: ';
+                    if (err.code === 'AccessDenied') {
+                        errorMsg += '访问拒绝 - 请检查Access Key权限';
+                    } else if (err.code === 'InvalidAccessKeyId') {
+                        errorMsg += '无效的Access Key ID';
+                    } else if (err.code === 'SignatureDoesNotMatch') {
+                        errorMsg += '签名不匹配 - 请检查Secret Key';
+                    } else if (err.code === 'NoSuchBucket') {
+                        errorMsg += '存储桶不存在 - 请检查Bucket名称';
+                    } else {
+                        errorMsg += err.message || '未知错误';
+                    }
+                    
+                    showToast(errorMsg);
+                } else {
+                    s3Client.deleteObject({
+                        Bucket: r2Config.bucket,
+                        Key: testKey
+                    }, function(deleteErr) {
+                        if (deleteErr) {
+                            console.warn('测试文件删除失败:', deleteErr);
+                        }
+                    });
+                    
+                    showToast('✅ R2连接测试成功！');
+                }
+            });
+        }
+
+        // ============== 数据管理功能 ==============
+        function loadR2BackupFiles() {
+            if (!s3Client) {
+                showToast('请先配置Cloudflare R2');
+                return;
+            }
+            
+            showToast('正在加载R2备份文件...');
+            
+            s3Client.listObjectsV2({
+                Bucket: r2Config.bucket,
+                Prefix: 'yudong-cloud/'
+            }, function(err, data) {
+                if (err) {
+                    console.error('加载备份文件列表失败:', err);
+                    showToast('加载备份文件列表失败');
+                    return;
+                }
+                
+                const backupFiles = data.Contents.filter(item => 
+                    item.Key.endsWith('.zip') && item.Key.startsWith('yudong-cloud/')
+                ).sort((a, b) => new Date(b.LastModified) - new Date(a.LastModified));
+                
+                renderR2BackupList(backupFiles);
+                showToast(`找到 ${backupFiles.length} 个备份文件`);
+            });
+        }
+        
+        function renderR2BackupList(backupFiles) {
+            const backupList = document.getElementById('r2BackupList');
+            
+            if (backupFiles.length === 0) {
+                backupList.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--ios-label-tertiary);">暂无备份文件</div>';
+                document.getElementById('r2BackupSection').style.display = 'block';
+                return;
+            }
+            
+            let html = '';
+            backupFiles.forEach(file => {
+                const fileName = file.Key.replace('yudong-cloud/', '');
+                const fileSize = formatBytes(file.Size);
+                const lastModified = new Date(file.LastModified).toLocaleString('zh-CN');
+                
+                html += `
+                    <div class="ios-list-item">
+                        <div class="ios-list-content">
+                            <div class="ios-list-title">${fileName}</div>
+                            <div class="ios-list-subtitle">${fileSize} • ${lastModified}</div>
+                        </div>
+                        <button class="ios-button ios-button-small" onclick="importFromR2Backup('${file.Key}')">恢复</button>
+                    </div>
+                `;
+            });
+            
+            backupList.innerHTML = html;
+            document.getElementById('r2BackupSection').style.display = 'block';
+        }
+
+        function importFromR2Backup(fileKey) {
+            if (!confirm('确定要从该备份文件导入数据吗？这将覆盖当前所有数据。')) {
+                return;
+            }
+            
+            showToast('正在从R2备份导入数据...');
+            
+            s3Client.getObject({
+                Bucket: r2Config.bucket,
+                Key: fileKey
+            }, function(err, data) {
+                if (err) {
+                    console.error('下载备份文件失败:', err);
+                    showToast('下载备份文件失败');
+                    return;
+                }
+                
+                const blob = new Blob([data.Body], { type: 'application/zip' });
+                importDatabase([new File([blob], fileKey.split('/').pop())]);
+            });
+        }
+
+        // 备份功能
+        async function exportAndUploadBackup() {
+            if (Object.keys(catalogData).length === 0) {
+                showToast('无数据可导出');
+                return;
+            }
+           
+            showToast('正在生成备份文件...');
+           
+            const zip = new JSZip();
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+           
+            const fullData = {
+                catalogData: catalogData,
+                uploadedFiles: uploadedFiles,
+                searchHistory: searchHistory,
+                exportTime: new Date().toISOString(),
+                version: '4.0-r2-offline'
+            };
+           
+            zip.file('database.json', JSON.stringify(fullData, null, 2));
+           
+            try {
+                const rows = [['产品代码', '码价', '米价', '门幅', '成分', '克重', '备注', '供应商', '图片宽度', '图片高度']];
+                Object.values(catalogData).forEach(function(p) {
+                    rows.push([
+                        p.code || '-',
+                        p.price || '-',
+                        p.priceAlt || '-',
+                        p.width || '-',
+                        p.composition || '-',
+                        p.weight || '-',
+                        p.notes || '-',
+                        p.supplier || '-',
+                        p.imageWidth || '-',
+                        p.imageHeight || '-'
+                    ]);
+                });
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+                XLSX.utils.book_append_sheet(wb, ws, '产品数据');
+                const xlsxBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                zip.file('产品数据表.xlsx', xlsxBuffer);
+            } catch (xlsxError) {
+                console.error('XLSX generation error:', xlsxError);
+            }
+           
+            zip.generateAsync({
+                type: 'blob',
+                compression: 'DEFLATE',
+                compressionOptions: { level: 6 }
+            }).then(async function(content) {
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = '宇东纺织全库备份_' + timestamp + '.zip';
+                link.click();
+                URL.revokeObjectURL(link.href);
+                
+                if (s3Client) {
+                    try {
+                        await uploadBackupToR2(content, link.download);
+                        showToast('✅ 完整备份导出成功！已同步到Cloudflare R2。');
+                    } catch (error) {
+                        console.error('备份上传失败:', error);
+                        showToast('✅ 备份导出成功，但上传到R2失败');
+                    }
+                } else {
+                    showToast('✅ 备份导出成功！');
+                }
+            }).catch(function(error) {
+                console.error('ZIP generation error:', error);
+                showToast('导出失败');
+            });
+        }
+
+        async function uploadBackupToR2(backupBlob, fileName) {
+            return new Promise((resolve, reject) => {
+                if (!s3Client) {
+                    reject(new Error('请先配置Cloudflare R2'));
+                    return;
+                }
+                
+                const key = `yudong-cloud/${fileName}`;
+                
+                s3Client.upload({
+                    Bucket: r2Config.bucket,
+                    Key: key,
+                    Body: backupBlob,
+                    ContentType: 'application/zip'
+                }, function(err, data) {
+                    if (err) {
+                        console.error('备份上传失败:', err);
+                        reject(err);
+                    } else {
+                        resolve(data);
+                    }
+                });
+            });
+        }
+
+        async function clearData() {
+            if (confirm('⚠️ 确定要清空所有数据吗？此操作不可撤销！')) {
+                try {
+                    await withDatabaseOperation(async () => {
+                        catalogData = {};
+                        searchHistory = [];
+                        uploadedFiles = [];
+                    });
+                    showToast('所有数据已清空');
+                } catch (error) {
+                    showToast('清空数据失败: ' + error.message);
+                }
+            }
+        }
+
+        async function clearSearchHistory() {
+            if (confirm('确定要清除所有搜索历史吗？')) {
+                try {
+                    await withDatabaseOperation(async () => {
+                        searchHistory = [];
+                    });
+                    showToast('搜索历史已清除');
+                } catch (error) {
+                    showToast('清除搜索历史失败: ' + error.message);
+                }
+            }
+        }
+
+        // 辅助函数
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        // 更新统计信息
+        async function updateStats() {
+            document.getElementById('dataCount').textContent = Object.keys(catalogData).length;
+            
+            let r2Images = 0;
+            let missingImages = 0;
+            
+            Object.values(catalogData).forEach(product => {
+                if (product.image) {
+                    if (product.image.includes(r2Config.customDomain) || product.image.includes('.r2.cloudflarestorage.com')) {
+                        r2Images++;
+                    }
+                } else {
+                    missingImages++;
+                }
+            });
+            
+            document.getElementById('r2ImageCount').textContent = r2Images;
+            document.getElementById('missingImageCount').textContent = missingImages;
+            
+            // 更新缓存统计
+            const cacheStats = await getCacheStats();
+            document.getElementById('cachedImageCount').textContent = cacheStats.count;
+            document.getElementById('cacheSize').innerHTML = (cacheStats.size / (1024 * 1024)).toFixed(2) + ' <span class="cache-size-unit">MB</span>';
+            
+            updateSidebarStats();
+        }
+
+        // 响应式辅助函数
+        function isMobileDevice() {
+            return window.innerWidth <= 768;
+        }
+
+        async function updateSidebarStats() {
+            if (!isMobileDevice()) {
+                document.getElementById('sidebarDataCount').textContent = document.getElementById('dataCount').textContent;
+                document.getElementById('sidebarR2ImageCount').textContent = document.getElementById('r2ImageCount').textContent;
+                
+                const cacheStats = await getCacheStats();
+                document.getElementById('sidebarCachedImageCount').textContent = cacheStats.count;
+                document.getElementById('sidebarNetworkStatus').textContent = isOnline ? '在线' : '离线';
+                document.getElementById('sidebarNetworkStatus').style.color = isOnline ? 'var(--ios-system-green)' : 'var(--ios-system-orange)';
+            }
+        }
+
+        // 渲染搜索历史
+        function renderHistory() {
+            const historyDiv = document.getElementById('searchHistory');
+            let html = '';
+            searchHistory.slice(-5).reverse().forEach(h => {
+                html += `<button class="ios-button ios-button-secondary ios-button-compact" onclick="loadHistory('${h.replace(/'/g, "\\'")}')">${h}</button>`;
+            });
+            historyDiv.innerHTML = html;
+            
+            updateSidebarHistory();
+        }
+
+        function updateSidebarHistory() {
+            if (!isMobileDevice()) {
+                const historyDiv = document.getElementById('sidebarSearchHistory');
+                let html = '';
+                searchHistory.slice(-5).reverse().forEach(h => {
+                    html += `<button class="ios-button ios-button-secondary ios-button-compact ios-button-full mb-sm" onclick="loadHistory('${h.replace(/'/g, "\\'")}')">${h}</button>`;
+                });
+                historyDiv.innerHTML = html;
+            }
+        }
+
+        function loadHistory(query) {
+            document.getElementById('searchInput').value = query;
+            handleSearch(query);
+            
+            document.querySelectorAll('.ios-tab-item').forEach(t => t.classList.remove('active'));
+            document.querySelector('.ios-tab-item[data-tab="query"]').classList.add('active');
+            document.querySelectorAll('.ios-tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById('tabQuery').classList.add('active');
+            updateNavBar('query');
+        }
+
+        // 文件导入功能
+        function importDatabase(files) {
+            if (files.length === 0) return;
+            const file = files[0];
+            
+            showToast('正在导入数据库...');
+            
+            if (file.name.endsWith('.json')) {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        
+                        await withDatabaseOperation(async () => {
+                            if (data.catalogData) {
+                                catalogData = data.catalogData;
+                                uploadedFiles = data.uploadedFiles || [];
+                                searchHistory = data.searchHistory || [];
+                            } else {
+                                catalogData = data;
+                            }
+                        });
+                        
+                        showToast('数据库导入成功！');
+                    } catch (err) {
+                        showToast('导入失败：JSON格式错误');
+                    }
+                };
+                reader.onerror = function() {
+                    showToast('文件读取失败');
+                };
+                reader.readAsText(file);
+            } else if (file.name.endsWith('.zip')) {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    JSZip.loadAsync(e.target.result).then(async function(zip) {
+                        const jsonFile = zip.file('database.json') || zip.file('数据库备份.json');
+                       
+                        if (jsonFile) {
+                            jsonFile.async('string').then(async function(jsonStr) {
+                                try {
+                                    const data = JSON.parse(jsonStr);
+                                    
+                                    await withDatabaseOperation(async () => {
+                                        if (data.catalogData) {
+                                            catalogData = data.catalogData;
+                                            uploadedFiles = data.uploadedFiles || [];
+                                            searchHistory = data.searchHistory || [];
+                                        } else {
+                                            catalogData = data;
+                                        }
+                                    });
+                                    
+                                    showToast('数据库导入成功！');
+                                } catch (err) {
+                                    showToast('导入失败：数据格式错误');
+                                }
+                            }).catch(function(err) {
+                                showToast('导入失败：无法读取JSON文件');
+                            });
+                        } else {
+                            showToast('导入失败：ZIP中未找到数据文件');
+                        }
+                    }).catch(function(err) {
+                        showToast('导入失败：无效的ZIP文件');
+                    });
+                };
+                reader.onerror = function() {
+                    showToast('文件读取失败');
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                showToast('不支持的文件格式');
+            }
+        }
+
+        // PDF导出功能
+        function exportQuotePDF() {
+            let allResults = [];
+            
+            if (rangeResults.length > 0) {
+                rangeResults.forEach(range => {
+                    range.matches.forEach(product => {
+                        allResults.push(product);
+                    });
+                });
+            } else {
+                searchResults.filter(r => r.found).forEach(r => {
+                    allResults.push(r);
+                });
+            }
+            
+            if (allResults.length === 0) {
+                showToast('没有可导出的搜索结果');
+                return;
+            }
+            
+            showToast('正在生成PDF...');
+            
+            const printContainer = document.createElement('div');
+            printContainer.style.cssText = 'position: absolute; left: -9999px; width: 210mm; font-family: "Microsoft YaHei", sans-serif; background: white; padding: 15mm; line-height: 1.1;';
+            document.body.appendChild(printContainer);
+            
+            let html = '<h1 style="text-align: center; color: #333; font-size: 20pt; margin-bottom: 10mm; border-bottom: 2px solid #333; padding-bottom: 5mm;">宇东纺织报价单</h1>';
+            html += '<div style="text-align: center; color: #666; margin-bottom: 8mm; font-size: 10pt;">生成时间：' + new Date().toLocaleString('zh-CN') + ' | 产品数量：' + allResults.length + ' 项</div>';
+            html += '<table style="width: 100%; border-collapse: collapse; margin-bottom: 5mm; font-size: 9pt;">';
+            html += '<thead><tr>';
+            html += '<th style="width: 8%; background-color: #333; color: white; padding: 8pt 4pt; text-align: center; font-weight: bold;">序号</th>';
+            html += '<th style="width: 15%; background-color: #333; color: white; padding: 8pt 4pt; text-align: center; font-weight: bold;">产品代码</th>';
+            html += '<th style="width: 10%; background-color: #333; color: white; padding: 8pt 4pt; text-align: center; font-weight: bold;">码价</th>';
+            html += '<th style="width: 10%; background-color: #333; color: white; padding: 8pt 4pt; text-align: center; font-weight: bold;">米价</th>';
+            html += '<th style="width: 10%; background-color: #333; color: white; padding: 8pt 4pt; text-align: center; font-weight: bold;">门幅</th>';
+            html += '<th style="width: 15%; background-color: #333; color: white; padding: 8pt 4pt; text-align: center; font-weight: bold;">成分</th>';
+            html += '<th style="width: 10%; background-color: #333; color: white; padding: 8pt 4pt; text-align: center; font-weight: bold;">克重</th>';
+            html += '<th style="width: 22%; background-color: #333; color: white; padding: 8pt 4pt; text-align: center; font-weight: bold;">备注</th>';
+            html += '</tr></thead><tbody>';
+            
+            allResults.forEach((product, index) => {
+                html += '<tr>';
+                html += '<td style="padding: 6pt 3pt; text-align: center; border: 1px solid #ddd; vertical-align: middle;">' + (index + 1) + '</td>';
+                html += '<td style="padding: 6pt 3pt; text-align: center; border: 1px solid #ddd; vertical-align: middle;"><strong>' + product.code + '</strong></td>';
+                html += '<td style="padding: 6pt 3pt; text-align: center; border: 1px solid #ddd; vertical-align: middle;">' + product.price + '</td>';
+                html += '<td style="padding: 6pt 3pt; text-align: center; border: 1px solid #ddd; vertical-align: middle;">' + product.priceAlt + '</td>';
+                html += '<td style="padding: 6pt 3pt; text-align: center; border: 1px solid #ddd; vertical-align: middle;">' + product.width + '</td>';
+                html += '<td style="padding: 6pt 3pt; text-align: center; border: 1px solid #ddd; vertical-align: middle; word-wrap: break-word;">' + product.composition + '</td>';
+                html += '<td style="padding: 6pt 3pt; text-align: center; border: 1px solid #ddd; vertical-align: middle;">' + product.weight + '</td>';
+                html += '<td style="padding: 6pt 3pt; text-align: left; border: 1px solid #ddd; vertical-align: top; color: #d32f2f; word-wrap: break-word;">' + (product.notes && product.notes !== '-' ? product.notes : '') + '</td>';
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            html += '<div style="text-align: center; color: #999; font-size: 8pt; margin-top: 10mm; border-top: 1px solid #ddd; padding-top: 5mm;">本报价单由宇东纺织报价系统生成</div>';
+            printContainer.innerHTML = html;
+            
+            html2canvas(printContainer, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff'
+            }).then(function(canvas) {
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                const imgWidth = pdfWidth - 20;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                
+                pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, 10, imgWidth, imgHeight);
+                pdf.save('报价单_' + new Date().toISOString().slice(0, 10) + '.pdf');
+                
+                document.body.removeChild(printContainer);
+                showToast('PDF导出成功');
+            }).catch(function(error) {
+                console.error('PDF generation error:', error);
+                document.body.removeChild(printContainer);
+                showToast('PDF生成失败，请重试');
+            });
+        }
+
+        // ============== 初始化事件监听 ==============
+        document.getElementById('localDbInput').addEventListener('change', function(e) {
+            importDatabase(e.target.files);
+            e.target.value = '';
+        });
+
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchReset = document.getElementById('searchReset');
+            
+            if (e.target.value.trim()) {
+                searchReset.classList.add('show');
+            } else {
+                searchReset.classList.remove('show');
+            }
+            
+            clearTimeout(searchTimeout);
+            const value = e.target.value.trim();
+            if (value && Object.keys(catalogData).length > 0) {
+                searchTimeout = setTimeout(() => {
+                    handleSearch(value);
+                }, 300);
+            } else {
+                searchResults = [];
+                fuzzyMatches = [];
+                rangeResults = [];
+                renderResults();
+            }
+        });
+
+        document.getElementById('manageSearchInput').addEventListener('input', function(e) {
+            const manageSearchReset = document.getElementById('manageSearchReset');
+            
+            if (e.target.value.trim()) {
+                manageSearchReset.classList.add('show');
+            } else {
+                manageSearchReset.classList.remove('show');
+            }
+            
+            filterManageProducts();
+        });
+
+        // 批量图片上传
+        document.getElementById('bulkImageInput').addEventListener('change', async function(e) {
+            // 检查是否处于只读模式
+            if (isReadOnlyMode) {
+                showToast('离线模式下无法上传图片', 2000);
+                e.target.value = '';
+                return;
+            }
+            
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+            
+            if (!s3Client) {
+                showToast('请先配置Cloudflare R2');
+                return;
+            }
+            
+            showToast(`处理 ${files.length} 张图片...`);
+            
+            let processed = 0;
+            let success = 0;
+            let failedFiles = [];
+            
+            for (const file of files) {
+                const name = file.name.toUpperCase();
+                const code = name.replace(/\.(JPG|PNG|JPEG|GIF|BMP|WEBP|SVG)$/i, '').trim();
+                
+                if (!code) {
+                    failedFiles.push({ name: file.name, error: '文件名无法提取产品代码' });
+                    processed++;
+                    continue;
+                }
+                
+                if (file.size > 5 * 1024 * 1024) {
+                    failedFiles.push({ name: file.name, error: '文件大于5MB' });
+                    processed++;
+                    continue;
+                }
+                
+                if (!catalogData[code]) {
+                    failedFiles.push({ name: file.name, error: '产品代码不存在' });
+                    processed++;
+                    continue;
+                }
+                
+                try {
+                    const dimensions = await getImageDimensions(file);
+                    const imageUrl = await uploadToR2(file, code);
+                    
+                    await withDatabaseOperation(async () => {
+                        catalogData[code].image = imageUrl;
+                        catalogData[code].imageWidth = dimensions.width;
+                        catalogData[code].imageHeight = dimensions.height;
+                    });
+                    
+                    success++;
+                } catch (error) {
+                    failedFiles.push({ name: file.name, error: error.message || '上传失败' });
+                }
+                
+                processed++;
+            }
+            
+            let statusMsg = `批量上传完成：${success} 成功，${failedFiles.length} 失败`;
+            if (failedFiles.length > 0) {
+                const failedList = failedFiles.slice(0, 3).map(f => `${f.name}`).join('; ');
+                statusMsg += `。失败文件：${failedList}${failedFiles.length > 3 ? '...' : ''}`;
+            }
+            
+            showToast(statusMsg);
+            e.target.value = '';
+        });
+
+        // 点击模态框背景关闭
+        document.getElementById('addProductModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideAddProductModal();
+            }
+        });
+
+        // ============== 初始化应用 - 纯粹的R2云端存储 + 自动后台缓存 ==============
+        async function initApp() {
+            // 初始化IndexedDB
+            await initImageDB();
+            
+            // 初始化图片加载
+            initImageLoading();
+            
+            // 清除过期的本地缓存
+            clearExpiredCache();
+            
+            // 加载R2配置
+            loadR2Config();
+            
+            // 初始网络状态检测
+            checkNetworkStatus();
+            
+            try {
+                // 首先尝试从R2加载数据库
+                if (s3Client && isOnline) {
+                    const success = await loadDatabaseFromR2();
+                    if (!success) {
+                        throw new Error('从R2加载数据失败');
+                    }
+                    showToast('云端数据加载成功');
+                } else {
+                    // 如果没有网络或R2未配置，尝试从本地缓存加载
+                    const cacheLoaded = loadFromLocalCache();
+                    if (cacheLoaded) {
+                        if (!isOnline) {
+                            enableOfflineMode();
+                            showToast('使用缓存数据（离线模式）', 3000);
+                        } else {
+                            showToast('使用缓存数据', 2000);
+                        }
+                    } else {
+                        // 如果没有缓存数据，初始化空数据库
+                        catalogData = {};
+                        searchHistory = [];
+                        uploadedFiles = [];
+                        if (!isOnline) {
+                            enableOfflineMode();
+                            showToast('无网络连接且无缓存数据', 3000);
+                        } else {
+                            showToast('已初始化空数据库');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('初始化失败:', error);
+                // 尝试从本地缓存加载作为降级方案
+                const cacheLoaded = loadFromLocalCache();
+                if (cacheLoaded) {
+                    if (!isOnline) {
+                        enableOfflineMode();
+                        showToast('网络异常，使用缓存数据（离线模式）', 3000);
+                    } else {
+                        showToast('网络异常，使用缓存数据', 2000);
+                    }
+                } else {
+                    catalogData = {};
+                    searchHistory = [];
+                    uploadedFiles = [];
+                    if (!isOnline) {
+                        enableOfflineMode();
+                        showToast('初始化失败且无缓存数据', 3000);
+                    } else {
+                        showToast('初始化失败，已创建空数据库');
+                    }
+                }
+            }
+            
+            // 初始化界面
+            updateStats();
+            renderHistory();
+            renderManageProducts();
+            
+            // 初始化PhotoSwipe图片查看器
+            initPhotoSwipe();
+            
+            // 初始化后台自动缓存系统
+            backgroundCacheManager.init();
+            
+            // 添加网络状态监听
+            window.addEventListener('online', () => {
+                checkNetworkStatus();
+            });
+            
+            window.addEventListener('offline', () => {
+                checkNetworkStatus();
+            });
+            
+            console.log('iOS风格报价系统初始化完成 - 纯R2云端存储 + 自动后台缓存');
+        }
+
+        // 启动应用
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
